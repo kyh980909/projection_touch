@@ -9,7 +9,7 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 
 # 경량화 모델
 checkpoint = "LiheYoung/depth-anything-small-hf"
-depth_estimator = pipeline("depth-estimation", model=checkpoint)
+depth_estimator = pipeline("depth-estimation", model=checkpoint, device=device)
 
 cap = cv2.VideoCapture(0)
 
