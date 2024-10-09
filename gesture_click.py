@@ -14,9 +14,76 @@ def is_finger_in_rectangle(finger_pos, top_left, bottom_right):
     return top_left_x <= finger_x <= bottom_right_x and top_left_y <= finger_y <= bottom_right_y
 
 # 사각형을 그리는 함수
-def draw_rectangle(image, top_left, bottom_right, is_finger_inside):
+def draw_rectangle(image, top_left, bottom_right, text, is_finger_inside):
     color = (0, 0, 255) if is_finger_inside else (0, 255, 0)  # 빨강 또는 초록
     cv2.rectangle(image, top_left, bottom_right, color, 2)
+
+    # 사각형의 중심 좌표 계산
+    center_x = (top_left[0] + bottom_right[0]) // 2
+    center_y = (top_left[1] + bottom_right[1]) // 2
+    
+    # 텍스트 설정 및 크기 조정
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+    
+    # 텍스트를 사각형 중앙에 배치하기 위한 좌표 설정
+    text_x = center_x - text_size[0] // 2
+    text_y = center_y + text_size[1] // 2
+
+    # 텍스트 추가 (사각형 내부)
+    cv2.putText(image, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
+
+    return image
+
+# 2줄에 5개씩 사각형 그리기 함수 (화면 크기에 맞춰 가변적으로 설정)
+def draw_grid_of_rectangles(image, finger_pos, rows=2, cols=5):
+    img_height, img_width, _ = image.shape
+
+    # 사각형 크기 및 간격을 화면 크기에 따라 설정
+    rect_width = int(0.5*img_width // (cols + 1))  # 화면 너비에 맞춰 가변적인 사각형 너비 설정
+    rect_height = int(0.5*img_height // (rows + 2))  # 화면 높이에 맞춰 가변적인 사각형 높이 설정
+    spacing_x = rect_width // 5  # 가로 간격
+    spacing_y = rect_height // 4  # 세로 간격
+
+    idx = 1
+
+    for row in range(rows):
+        for col in range(cols):
+            # 사각형의 좌측 상단과 우측 하단 좌표 계산
+            top_left_x = 300+(col + 1) * spacing_x + col * rect_width
+            top_left_y = 500+(row + 1) * spacing_y + row * rect_height
+            bottom_right_x = top_left_x + rect_width
+            bottom_right_y = top_left_y + rect_height
+            
+
+            if finger_pos is not None:
+                # 손가락 끝 좌표가 사각형 내부에 있는지 확인
+                is_finger_inside = is_finger_in_rectangle(finger_pos, (top_left_x, top_left_y), (bottom_right_x, bottom_right_y))
+            else:
+                is_finger_inside = False
+
+            # 사각형 그리기 (손가락이 사각형 안에 있으면 색상을 변경)
+            image = draw_rectangle(image, (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), str(idx), is_finger_inside)
+            idx += 1
+    return image
+
+# 화면 오른쪽 아래에 제스처를 출력하는 함수
+def display_gesture(image, gesture_text):
+    # 텍스트 위치: 화면 오른쪽 아래
+    h, w, _ = image.shape
+    position = (w - 400, h - 50)  # 오른쪽 아래로 텍스트 위치 설정
+    
+    # 텍스트 설정
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    color = (255, 255, 255)  # 흰색 텍스트
+
+    # 텍스트 출력
+    cv2.putText(image, f'Gesture: {gesture_text}', position, font, font_scale, color, font_thickness)
+
     return image
 
 # 각도를 계산하는 함수
@@ -56,7 +123,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
 def process_video(cap, model, actions, seq_length, top_left, bottom_right, device):
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
-    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
 
     seq = []
     action_seq = []
@@ -77,7 +144,9 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
         img = cv2.flip(img, 1)
         result = hands.process(img)
 
-        draw_rectangle(img, top_left, bottom_right, False)
+        # draw_rectangle(img, top_left, bottom_right, 'test',False)
+        img = draw_grid_of_rectangles(img, None)
+        img = display_gesture(img, '')
 
         if result.multi_hand_landmarks is not None:
             for res in result.multi_hand_landmarks:
@@ -108,8 +177,10 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
                             int(result.multi_hand_landmarks[0].landmark[8].y * h))
 
                 if action == "click":
-                    is_finger_inside = is_finger_in_rectangle(finger_pos, top_left, bottom_right)
-                    img = draw_rectangle(img, top_left, bottom_right, is_finger_inside)
+                    # is_finger_inside = is_finger_in_rectangle(finger_pos, top_left, bottom_right)
+                    # img = draw_rectangle(img, top_left, bottom_right, 'test' ,is_finger_inside)
+                    img = draw_grid_of_rectangles(img, finger_pos)
+                img = display_gesture(img, action)
 
                 # 검지 손가락 끝에 원 그리기
                 cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
@@ -131,11 +202,8 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
 # 메인 함수
 def main():
     device = torch.device('mps' if torch.cuda.is_available() else 'cpu')
-    
-    # model = LSTMModel(input_size=99, hidden_size=64, num_classes=3)  # 적절한 input_size 및 num_classes 설정
-    # model.load_state_dict(torch.load('models/lstm_model.pth'))  # 모델 불러오기
-    
-    model = torch.jit.load('lstm_model_scr.pt')
+        
+    model = torch.jit.load('models/lstm_model_scr.pt')
     model.to(device)
 
     actions = ['click', 'stanby1', 'stanby2']
