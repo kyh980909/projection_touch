@@ -44,29 +44,30 @@ def draw_grid_of_rectangles(image, finger_pos, rows=2, cols=5):
     # 사각형 크기 및 간격을 화면 크기에 따라 설정
     rect_width = int(0.5*img_width // (cols + 1))  # 화면 너비에 맞춰 가변적인 사각형 너비 설정
     rect_height = int(0.5*img_height // (rows + 2))  # 화면 높이에 맞춰 가변적인 사각형 높이 설정
-    spacing_x = rect_width // 5  # 가로 간격
-    spacing_y = rect_height // 4  # 세로 간격
+    spacing_x = rect_width // 5 * 5  # 가로 간격
+    spacing_y = rect_height // 4 * 2 # 세로 간격
 
     idx = 1
 
     for row in range(rows):
         for col in range(cols):
             # 사각형의 좌측 상단과 우측 하단 좌표 계산
-            top_left_x = 300+(col + 1) * spacing_x + col * rect_width
+            top_left_x = 100+(col + 1) * spacing_x + col * rect_width
             top_left_y = 500+(row + 1) * spacing_y + row * rect_height
             bottom_right_x = top_left_x + rect_width
             bottom_right_y = top_left_y + rect_height
-            
 
             if finger_pos is not None:
                 # 손가락 끝 좌표가 사각형 내부에 있는지 확인
                 is_finger_inside = is_finger_in_rectangle(finger_pos, (top_left_x, top_left_y), (bottom_right_x, bottom_right_y))
+
             else:
                 is_finger_inside = False
 
             # 사각형 그리기 (손가락이 사각형 안에 있으면 색상을 변경)
             image = draw_rectangle(image, (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), str(idx), is_finger_inside)
             idx += 1
+
     return image
 
 # 화면 오른쪽 아래에 제스처를 출력하는 함수
@@ -104,7 +105,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
         y_pred = model(input_data).squeeze()
         i_pred = int(torch.argmax(y_pred))
         conf = torch.softmax(y_pred, dim=0)[i_pred].item()
-        print(i_pred, conf)
+        # print(i_pred, conf)
     if conf < 0.5:
         return None, action_seq
 
@@ -134,6 +135,7 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
     out = cv2.VideoWriter('input.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (w, h))
     out2 = cv2.VideoWriter('output.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (w, h))
 
+    wait_click = True
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -169,7 +171,7 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
                 ## 손가락 좌표와 각도 추출 ##
 
                 action, action_seq = recognize_action(model, input_data, actions, action_seq, device)
-                print(f'action: {action}, action_seq: {action_seq}')
+                # print(f'action: {action}, action_seq: {action_seq}')
                 if action is None:
                     continue
 
@@ -179,7 +181,13 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
                 if action == "click":
                     # is_finger_inside = is_finger_in_rectangle(finger_pos, top_left, bottom_right)
                     # img = draw_rectangle(img, top_left, bottom_right, 'test' ,is_finger_inside)
-                    img = draw_grid_of_rectangles(img, finger_pos)
+                    print('Wait on click')
+                    if wait_click:
+                        print('Click')
+                        img = draw_grid_of_rectangles(img, finger_pos)
+                        wait_click = False
+                else:
+                    wait_click = True
                 img = display_gesture(img, action)
 
                 # 검지 손가락 끝에 원 그리기
@@ -201,7 +209,7 @@ def process_video(cap, model, actions, seq_length, top_left, bottom_right, devic
 
 # 메인 함수
 def main():
-    device = torch.device('mps' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
     model = torch.jit.load('models/lstm_model_scr.pt')
     model.to(device)

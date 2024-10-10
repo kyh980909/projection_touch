@@ -1,0 +1,5 @@
+*.h5
+*.mp4
+*.keras
+keyboard_model1/
+ipynb_checkpoints/
