@@ -134,9 +134,9 @@ def display_click_status(img: np.ndarray, click_status: str, width: int, height:
     text_height = text_size[1]
 
     # 왼쪽 하단 위치 계산 (화면에서 일정 간격 떨어짐)
-    padding = 100
+    padding = 10
     text_x = padding
-    text_y = height - padding
+    text_y = 1000 #height - padding
 
     # 텍스트를 위한 배경 사각형
     rect_x1 = text_x - padding // 2
