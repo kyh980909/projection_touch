@@ -4,8 +4,48 @@ import numpy as np
 import torch
 from utils import *
 
+def onMouse(event, x, y, flags, param):
+    global srcQuad, dragSrc, ptOld, img
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        for i in range(4):
+            if cv2.norm(srcQuad[i] - (x, y)) < 25: # type: ignore
+                dragSrc[i] = True
+                ptOld = (x, y)
+                break
+
+    if event == cv2.EVENT_LBUTTONUP:
+        for i in range(4):
+            dragSrc[i] = False
+
+    if event == cv2.EVENT_MOUSEMOVE:
+        for i in range(4):
+            if dragSrc[i]:
+                dx = x - ptOld[0]
+                dy = y - ptOld[1]
+
+                srcQuad[i] += (dx, dy)
+
+                cpy = drawROI(img, srcQuad, 1.0)
+                cv2.imshow('img', cpy)
+                ptOld = (x, y)
+                break
+
 # 비디오 처리 루프 함수
 def process_video(cap, model, actions, seq_length, width, height, device):
+
+    global srcQuad, dragSrc, ptOld, img
+
+    dragSrc= [False, False, False, False]
+
+    # 마우스 콜백 함수를 위한 변수
+    points = []
+    transform_ready = False
+
+    # 모서리 점들의 좌표, 드래그 상태 여부
+    srcQuad = np.array([[30, 30], [30, height-30], [width-30, height-30], [width-30, 30]], np.float32)
+    dstQuad = np.array([[0, 0], [0, height-1], [width-1, height-1], [width-1, 0]], np.float32)
+    
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
     hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
@@ -15,6 +55,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     rows = 2
     cols = 5
     button_texts = [f'Button {i+1}' for i in range(rows * cols)]
+    button_texts[-1] = button_texts[-1].replace('10', '0')
 
     # 버튼 크기 및 위치 비율 설정 (화면 크기 비율에 맞춰 동적으로 설정)
     button_width_ratio = 0.1  # 버튼 너비를 화면의 10%로 설정
@@ -59,6 +100,18 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 
         # 각 버튼들의 인덱스와 값을 화면에 출력 (draw_legend 함수 활용)
         img = draw_legend(img, key_map, width, height, size_ratio=1.0)
+
+        # 모서리점, 사각형 그리기
+        img = drawROI(img, srcQuad, 1.0)
+        projector_img = img.copy()
+
+        cv2.setMouseCallback('img', onMouse)
+
+        # 투시 변환
+        pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
+        dst = cv2.warpPerspective(img, pers, (width, height), flags=cv2.INTER_CUBIC)
+
+        cv2.imshow('dst', dst)
 
         if result.multi_hand_landmarks is not None:
             for res in result.multi_hand_landmarks:
@@ -132,11 +185,11 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 if __name__ == "__main__":
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
-    model = torch.jit.load('models/lstm_model_scr.pt')
+    model = torch.jit.load('models/lstm_model_scr3.pt')
     model.to(device)
 
     actions = ['click', 'stanby1', 'stanby2']
-    seq_length = 30
+    seq_length = 10
 
     cap = cv2.VideoCapture(0)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))

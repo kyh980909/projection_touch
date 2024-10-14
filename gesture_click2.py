@@ -12,9 +12,10 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 
     # 버튼 정보 생성
     buttons = []
-    rows = 2
-    cols = 5
-    button_texts = [f'Button {i+1}' for i in range(rows * cols)]
+    rows = 3
+    cols = 3
+    button_texts = [f'{i+1}' for i in range(rows * cols)]
+    button_texts[:3], button_texts[-3:] = button_texts[-3:], button_texts[:3]
 
     # 버튼 크기 및 위치 비율 설정 (화면 크기 비율에 맞춰 동적으로 설정)
     button_width_ratio = 0.1  # 버튼 너비를 화면의 10%로 설정
@@ -26,8 +27,8 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     for row in range(rows):
         for col in range(cols):
             # 버튼의 크기 및 위치 계산 (비율 기반으로 설정)
-            x = 300+round((col + 1) * spacing_ratio * width + col * button_width_ratio * width)
-            y = 600+round((row + 1) * spacing_ratio * height + row * button_height_ratio * height)
+            x = 600+round((col + 1) * spacing_ratio * width + col * button_width_ratio * width)
+            y = 350+round((row + 1) * spacing_ratio * height + row * button_height_ratio * height)
             button_size = [round(button_width_ratio * width), round(button_height_ratio * height)]
             button_text = button_texts[row * cols + col]
             buttons.append(Button(pos=[x, y], size=button_size, text=button_text))

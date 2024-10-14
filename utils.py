@@ -162,12 +162,22 @@ def horizontal_symmetry(x: int, y: int, width: int) -> tuple[int, int]:
     new_x = width - x
     return new_x, y
 
-def drawROI(img: np.ndarray, corners: np.ndarray, width: int, height: int, size_ratio: float) -> np.ndarray:
+
+
+def drawROI(img: np.ndarray, corners: np.ndarray, size_ratio: float) -> np.ndarray:
     cpy = img.copy()
+
+    c1 = (192, 192, 255)
+    c2 = (128, 128, 255)
 
     # ROI를 그리는 코드 (화면 크기에 맞춰 조정)
     for pt in corners:
-        cv2.circle(cpy, tuple(pt.astype(int)), round(25 * size_ratio), (192, 192, 255), -1, cv2.LINE_AA)
+        cv2.circle(cpy, tuple(pt.astype(int)), round(25 * size_ratio), c1, -1, cv2.LINE_AA)
+
+    cv2.line(cpy, tuple(corners[0].astype(int)), tuple(corners[1].astype(int)), c2, 2, cv2.LINE_AA)
+    cv2.line(cpy, tuple(corners[1].astype(int)), tuple(corners[2].astype(int)), c2, 2, cv2.LINE_AA)
+    cv2.line(cpy, tuple(corners[2].astype(int)), tuple(corners[3].astype(int)), c2, 2, cv2.LINE_AA)
+    cv2.line(cpy, tuple(corners[3].astype(int)), tuple(corners[0].astype(int)), c2, 2, cv2.LINE_AA)
 
     return cv2.addWeighted(img, 0.3, cpy, 0.7, 0)
 
@@ -215,10 +225,11 @@ def recognize_action(model, input_data, actions, action_seq, device):
     action = actions[i_pred]
     action_seq.append(action)
 
-    if len(action_seq) < 3:
+    if len(action_seq) < 2:
         return None, action_seq
 
-    if action_seq[-1] == action_seq[-2] == action_seq[-3]:
+    # 연속으로 몇 프레임의 액션이 동일해야 해당 액션으로 인식하는지 조절 (제스처 변경 속도 조절 가능)
+    if action_seq[-1] == action_seq[-2]:# == action_seq[-3]:
         return action, action_seq
 
     return None, action_seq
