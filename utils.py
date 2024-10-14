@@ -167,12 +167,12 @@ def horizontal_symmetry(x: int, y: int, width: int) -> tuple[int, int]:
 def drawROI(img: np.ndarray, corners: np.ndarray, size_ratio: float) -> np.ndarray:
     cpy = img.copy()
 
-    c1 = (192, 192, 255)
+    c1 = [(192, 192, 255), (192, 102, 255), (102, 192, 255), (192, 255, 255)]
     c2 = (128, 128, 255)
 
     # ROI를 그리는 코드 (화면 크기에 맞춰 조정)
-    for pt in corners:
-        cv2.circle(cpy, tuple(pt.astype(int)), round(25 * size_ratio), c1, -1, cv2.LINE_AA)
+    for i, pt in enumerate(corners):
+        cv2.circle(cpy, tuple(pt.astype(int)), round(25 * size_ratio), c1[i], -1, cv2.LINE_AA)
 
     cv2.line(cpy, tuple(corners[0].astype(int)), tuple(corners[1].astype(int)), c2, 2, cv2.LINE_AA)
     cv2.line(cpy, tuple(corners[1].astype(int)), tuple(corners[2].astype(int)), c2, 2, cv2.LINE_AA)
@@ -184,6 +184,7 @@ def drawROI(img: np.ndarray, corners: np.ndarray, size_ratio: float) -> np.ndarr
 def convert_position(pt1: np.ndarray, pt2: np.ndarray, pers: np.ndarray) -> tuple[tuple[int, int], tuple[int, int]]:
     transformed_pt1 = np.dot(pers, pt1)
     transformed_pt2 = np.dot(pers, pt2)
+    
     # 변환된 좌표 계산 후 반환
     return (round(transformed_pt1[0]), round(transformed_pt1[1])), (round(transformed_pt2[0]), round(transformed_pt2[1]))
 
@@ -225,7 +226,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
     action = actions[i_pred]
     action_seq.append(action)
 
-    if len(action_seq) < 2:
+    if len(action_seq) < 3:
         return None, action_seq
 
     # 연속으로 몇 프레임의 액션이 동일해야 해당 액션으로 인식하는지 조절 (제스처 변경 속도 조절 가능)

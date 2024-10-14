@@ -38,10 +38,6 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 
     dragSrc= [False, False, False, False]
 
-    # 마우스 콜백 함수를 위한 변수
-    points = []
-    transform_ready = False
-
     # 모서리 점들의 좌표, 드래그 상태 여부
     srcQuad = np.array([[30, 30], [30, height-30], [width-30, height-30], [width-30, 30]], np.float32)
     dstQuad = np.array([[0, 0], [0, height-1], [width-1, height-1], [width-1, 0]], np.float32)
@@ -91,7 +87,6 @@ def process_video(cap, model, actions, seq_length, width, height, device):
             break
 
         img0 = img.copy()
-        img = cv2.flip(img, 1)
         img = draw(img, buttons, width, height, size_ratio=1.0, position_ratio=1.0)
         result = hands.process(img)
 
@@ -101,15 +96,15 @@ def process_video(cap, model, actions, seq_length, width, height, device):
         # 각 버튼들의 인덱스와 값을 화면에 출력 (draw_legend 함수 활용)
         img = draw_legend(img, key_map, width, height, size_ratio=1.0)
 
-        # 모서리점, 사각형 그리기
-        img = drawROI(img, srcQuad, 1.0)
-        projector_img = img.copy()
+        # 모서리점, 사각형 그리기 (img에만 적용)
+        img_with_roi = drawROI(img, srcQuad, 1.0)
+        # projector_img = img_with_roi.copy()
 
         cv2.setMouseCallback('img', onMouse)
 
-        # 투시 변환
+        # 투시 변환 (dst에서는 ROI와 관련된 내용 제외)
         pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
-        dst = cv2.warpPerspective(img, pers, (width, height), flags=cv2.INTER_CUBIC)
+        dst = cv2.warpPerspective(img0, pers, (width, height), flags=cv2.INTER_CUBIC)  # img0를 사용하여 srcQuad 및 ROI 무시
 
         cv2.imshow('dst', dst)
 
@@ -149,6 +144,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
                         x, y = button.pos
                         w, h = button.size
                         
+                        # 어떤 버튼을 클릭했는지 판단하는 조건문
                         if is_finger_in_rectangle(finger_pos, button):
                             if wait_click:
                                 text = button.text
@@ -163,7 +159,6 @@ def process_video(cap, model, actions, seq_length, width, height, device):
                                 wait_click = False
                 else:
                     wait_click = True
-                # img = display_gesture(img, action, width=w, height=h)
 
                 # 검지 손가락 끝에 원 그리기
                 cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
@@ -173,7 +168,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 
         out.write(img0)
         out2.write(img)
-        cv2.imshow('img', img)
+        cv2.imshow('img', img_with_roi)  # ROI가 그려진 이미지만 'img'에 표시
         if cv2.waitKey(1) == ord('q'):
             break
 
