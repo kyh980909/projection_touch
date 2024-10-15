@@ -97,7 +97,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
         img = draw_legend(img, key_map, width, height, size_ratio=1.0)
 
         # 모서리점, 사각형 그리기 (img에만 적용)
-        img_with_roi = drawROI(img, srcQuad, 1.0)
+        # img_with_roi = drawROI(img, srcQuad, 1.0)
         # projector_img = img_with_roi.copy()
 
         cv2.setMouseCallback('img', onMouse)
@@ -168,7 +168,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 
         out.write(img0)
         out2.write(img)
-        cv2.imshow('img', img_with_roi)  # ROI가 그려진 이미지만 'img'에 표시
+        cv2.imshow('img', img)  # ROI가 그려진 이미지만 'img'에 표시
         if cv2.waitKey(1) == ord('q'):
             break
 
@@ -180,14 +180,14 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 if __name__ == "__main__":
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
-    model = torch.jit.load('models/lstm_model_scr3.pt')
+    model = torch.jit.load('models/lstm_model_scr2.pt')
     model.to(device)
 
-    actions = ['click', 'stanby1', 'stanby2']
-    seq_length = 10
+    actions = ['click', 'wait', 'grib']
+    seq_length = 30
 
     cap = cv2.VideoCapture(0)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
+    print(f'width: {width}, height: {height}')
     process_video(cap, model, actions, seq_length, width, height, device)
