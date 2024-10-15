@@ -41,7 +41,7 @@ def draw_legend(img: np.ndarray, key_map: dict[str, str], width: int, height: in
     max_text_width = 0
     text_height = 0
     padding = 20
-    line_height = 40  # 한 줄당 높이
+    line_height = 20  # 한 줄당 높이
     
     # 텍스트 크기 측정하여 최대 너비와 총 높이 계산
     for k, v in key_map.items():
@@ -54,8 +54,8 @@ def draw_legend(img: np.ndarray, key_map: dict[str, str], width: int, height: in
     rect_height = text_height + padding  # 텍스트 줄 수에 맞춰 사각형 높이 결정
 
     # 사각형 좌상단 및 우하단 좌표 설정
-    rect_x1 = 0#max(0, round(10 / 100 * width))
-    rect_y1 = 0#max(0, round(10 / 100 * height))
+    rect_x1 = 0
+    rect_y1 = 0
     rect_x2 = min(width, rect_x1 + rect_width)
     rect_y2 = min(height, rect_y1 + rect_height)
 
@@ -136,7 +136,7 @@ def display_click_status(img: np.ndarray, click_status: str, width: int, height:
     # 왼쪽 하단 위치 계산 (화면에서 일정 간격 떨어짐)
     padding = 10
     text_x = padding
-    text_y = 1000 #height - padding
+    text_y = round(height*0.92) #height - padding
 
     # 텍스트를 위한 배경 사각형
     rect_x1 = text_x - padding // 2

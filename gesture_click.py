@@ -57,14 +57,16 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     button_width_ratio = 0.1  # 버튼 너비를 화면의 10%로 설정
     button_height_ratio = 0.1  # 버튼 높이를 화면의 10%로 설정
     spacing_ratio = 0.05  # 버튼 간의 간격을 화면 비율에 맞춤
+    x_offset_ratio = 0.25
+    y_offset_ratio = 0.5
 
     key_map = {}
 
     for row in range(rows):
         for col in range(cols):
             # 버튼의 크기 및 위치 계산 (비율 기반으로 설정)
-            x = 300+round((col + 1) * spacing_ratio * width + col * button_width_ratio * width)
-            y = 600+round((row + 1) * spacing_ratio * height + row * button_height_ratio * height)
+            x = round(width * x_offset_ratio + (col + 1) * spacing_ratio * width + col * button_width_ratio * width)
+            y = round(height * y_offset_ratio + (row + 1) * spacing_ratio * height + row * button_height_ratio * height)
             button_size = [round(button_width_ratio * width), round(button_height_ratio * height)]
             button_text = button_texts[row * cols + col]
             buttons.append(Button(pos=[x, y], size=button_size, text=button_text))
@@ -78,6 +80,13 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     out = cv2.VideoWriter('input.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
     out2 = cv2.VideoWriter('output.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
+
+    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('img', width, height)
+    cv2.setMouseCallback('img', onMouse)
+
+    cv2.namedWindow('dst', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('dst', width, height)
 
     wait_click = True
     while cap.isOpened():
@@ -99,8 +108,6 @@ def process_video(cap, model, actions, seq_length, width, height, device):
         # 모서리점, 사각형 그리기 (img에만 적용)
         img_with_roi = drawROI(img, srcQuad, 1.0)
         # projector_img = img_with_roi.copy()
-
-        cv2.setMouseCallback('img', onMouse)
 
         # 투시 변환 (dst에서는 ROI와 관련된 내용 제외)
         pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
@@ -180,14 +187,14 @@ def process_video(cap, model, actions, seq_length, width, height, device):
 if __name__ == "__main__":
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
-    model = torch.jit.load('models/lstm_model_scr3.pt')
+    model = torch.jit.load('models/lstm_model_scr2.pt')
     model.to(device)
 
-    actions = ['click', 'stanby1', 'stanby2']
+    actions = ['click', 'wait', 'grib']
     seq_length = 10
 
     cap = cv2.VideoCapture(0)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
+    print(f'width: {width}, height: {height}')
     process_video(cap, model, actions, seq_length, width, height, device)
