@@ -3,3 +3,4 @@
 *.keras
 keyboard_model1/
 ipynb_checkpoints/
+__pycache__
