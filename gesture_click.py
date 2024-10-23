@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import torch
+import subprocess
 from utils import *
 
 def onMouse(event, x, y, flags, param):
@@ -89,6 +90,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     cv2.resizeWindow('dst', width, height)
 
     wait_click = True
+    wait_open_setting = True
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -164,8 +166,15 @@ def process_video(cap, model, actions, seq_length, width, height, device):
                                 # 사각형 그리기
                                 cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
                                 wait_click = False
+                elif action == "grib":
+                    if wait_open_setting:
+                        # 시스템 환경설정 열기
+                        subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.displays"])
+                        wait_open_setting = False
+
                 else:
                     wait_click = True
+                    wait_open_setting = True
 
                 # 검지 손가락 끝에 원 그리기
                 cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)

@@ -41,7 +41,7 @@ def draw_legend(img: np.ndarray, key_map: dict[str, str], width: int, height: in
     max_text_width = 0
     text_height = 0
     padding = 20
-    line_height = 20  # 한 줄당 높이
+    line_height = 25  # 한 줄당 높이
     
     # 텍스트 크기 측정하여 최대 너비와 총 높이 계산
     for k, v in key_map.items():
