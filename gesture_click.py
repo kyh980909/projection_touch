@@ -4,6 +4,47 @@ import numpy as np
 import torch
 import subprocess
 from utils import *
+import socket #소켓 통신
+import threading
+import queue
+
+client_socket = None
+
+#사용자 입력을 받는 함수
+def get_user_input(input_queue):
+    while True:
+        user_input = input("Enter a command: ")
+        input_queue.put(user_input)
+        if user_input == 'q':
+            break
+
+#서버에 연결하는 함수
+def connect_to_server():
+    global client_socket #전역변수로 선언
+    HOST = 'beaglebone.local'  # 서버의 IP 주소
+    PORT = 8888  # 서버의 포트 번호
+
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((HOST, PORT))
+        print("서버에 연결되었습니다.")
+    except Exception as e:
+        print(f"서버 연결 실패: {e}")
+        client_socket = None
+
+#서버에 텍스트를 전송하는 함수
+def send_text(text):
+    global client_socket
+    if client_socket:
+        try:
+            client_socket.sendall(text.encode('utf-8'))
+            print("텍스트 전송 완료")
+        except Exception as e:
+            print(f"전송 중 오류 발생: {e}")
+            # 연결이 끊어졌을 경우 재연결 시도
+            connect_to_server()
+    else:
+        print("서버에 연결되어 있지 않습니다.")
 
 def onMouse(event, x, y, flags, param):
     global srcQuad, dragSrc, ptOld, img
@@ -31,6 +72,21 @@ def onMouse(event, x, y, flags, param):
                 cv2.imshow('img', cpy)
                 ptOld = (x, y)
                 break
+
+def projection_area_auto_detection(cap):
+    while cap.isOpend():
+        ret, img = cap.read()
+        if not ret:
+            print("Failed to capture frame from camera. Exiting.")
+            break
+
+        corners, result_image = find_green_corners(img)
+
+        cv2.imshow('img', result_image)  # ROI가 그려진 이미지만 'img'에 표시
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+    return corners
 
 # 비디오 처리 루프 함수
 def process_video(cap, model, actions, seq_length, width, height, device):
@@ -75,6 +131,13 @@ def process_video(cap, model, actions, seq_length, width, height, device):
              # 각 버튼의 인덱스와 값을 key_map에 추가
             key_map[row * cols + col + 1] = button_text  # 인덱스를 1부터 시작
 
+    #사용자 입력을 받는 스레드 생성
+    input_queue = queue.Queue()
+
+    input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
+    input_thread.daemon = True
+    input_thread.start()
+
     seq = []
     action_seq = []
 
@@ -108,8 +171,9 @@ def process_video(cap, model, actions, seq_length, width, height, device):
         img = draw_legend(img, key_map, width, height, size_ratio=1.0)
 
         # 모서리점, 사각형 그리기 (img에만 적용)
-        # img_with_roi = drawROI(img, srcQuad, 1.0)
-        # projector_img = img_with_roi.copy()
+        img_with_roi = drawROI(img, srcQuad, 1.0)
+        projector_img = img_with_roi.copy()
+        cv2.setMouseCallback('img', onMouse)
 
         # 투시 변환 (dst에서는 ROI와 관련된 내용 제외)
         pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
@@ -157,6 +221,7 @@ def process_video(cap, model, actions, seq_length, width, height, device):
                         if is_finger_in_rectangle(finger_pos, button):
                             if wait_click:
                                 text = button.text
+                                send_text(text) #서버에 텍스트 전송
                                 # 화면 밖으로 나가지 않도록 좌표 보정
                                 rect_x1 = max(0, x - w // 2)
                                 rect_y1 = max(0, y - h // 2)
@@ -182,11 +247,20 @@ def process_video(cap, model, actions, seq_length, width, height, device):
                 # 텍스트 출력
                 cv2.putText(img, f'{action.upper()}', org=(finger_pos[0], finger_pos[1] + 20), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 255, 255), thickness=2)
 
+
+        # img_with_roi = draw(img_with_roi, buttons)
+        # img_with_roi = draw_legend(img_with_roi)
+        # img_with_roi = draw_input(img_with_roi, text)
+        # projector_img = draw_input(projector_img, text)
+
         out.write(img0)
         out2.write(img)
         cv2.imshow('img', img)  # ROI가 그려진 이미지만 'img'에 표시
         if cv2.waitKey(1) == ord('q'):
             break
+
+    if client_socket:
+        client_socket.close()
 
     cap.release()
     out.release()
@@ -194,6 +268,8 @@ def process_video(cap, model, actions, seq_length, width, height, device):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
+    #서버에 연결
+    # connect_to_server()
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
     model = torch.jit.load('models/lstm_model_scr2.pt')

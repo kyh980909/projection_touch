@@ -234,3 +234,75 @@ def recognize_action(model, input_data, actions, action_seq, device):
         return action, action_seq
 
     return None, action_seq
+
+def validate_corners(corners, y_threshold=10):
+    """
+    주어진 네 좌표의 y축 및 x축 값 조건을 검사하는 함수.
+    
+    Parameters:
+    corners (list): 좌상단, 우상단, 좌하단, 우하단 순서로 정렬된 (x, y) 좌표 리스트.
+    y_threshold (int): y축 값 비교를 위한 허용 오차.
+    x_threshold (int): x축 값 비교를 위한 최소 거리.
+    
+    Returns:
+    bool: 조건을 만족하면 True, 그렇지 않으면 False.
+    """
+    # 좌표를 분리
+    top_left, top_right, bottom_left, bottom_right = corners
+    
+    # y축 값 비교
+    top_y_similar = abs(top_left[1] - top_right[1]) <= y_threshold
+    bottom_y_similar = abs(bottom_left[1] - bottom_right[1]) <= y_threshold
+    
+    # x축 값 비교 (상단의 길이가 하단의 길이보다 길어야 함)
+    top_width = abs(top_right[0] - top_left[0])
+    bottom_width = abs(bottom_right[0] - bottom_left[0])
+    width_condition = top_width > bottom_width
+    
+    # 모든 조건을 만족해야 True
+    return top_y_similar and bottom_y_similar and width_condition
+
+def find_green_corners(img):
+    lower_green = np.array([30, 25, 25])
+    upper_green = np.array([85, 255, 255])
+
+    # HSV 색 공간으로 변환 및 초록색 필터링
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+
+    # 모폴로지 연산으로 노이즈 제거
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    # 엣지 검출 및 윤곽선 찾기
+    edges = cv2.Canny(mask, 50, 150)
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 가장 큰 윤곽선 찾기
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # 사다리꼴 꼭짓점 근사화
+    epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+    approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+
+    # 꼭짓점이 4개인 경우만 처리
+    if len(approx) == 4:
+        corners = [tuple(pt[0]) for pt in approx]
+
+        # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
+        corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
+        top_points = sorted(corners[:2], key=lambda x: x[0])
+        bottom_points = sorted(corners[2:], key=lambda x: x[0])
+        sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+
+        # 꼭짓점 출력
+        for idx, point in enumerate(sorted_corners):
+            cv2.circle(img, point, 10, (0, 0, 255), -1)
+            cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+        print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
+        return sorted_corners, img
+    else:
+        # print("사각형을 찾지 못했습니다.")
+        return [], img
