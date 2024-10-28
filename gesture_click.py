@@ -80,7 +80,7 @@ def projection_area_auto_detection(cap):
     input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
     input_thread.daemon = True
     input_thread.start()
-
+    corners = []
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -88,7 +88,11 @@ def projection_area_auto_detection(cap):
             break
 
         # corners, result_image = extract_projection_area(img)
-        corners, result_image = detect_white_corners(img)
+        # corners, result_image = detect_white_corners(img)
+        
+        result_corners, result_image = find_green_corners(img)
+        if result_corners:
+            corners = result_corners
 
         try:
             user_input = input_queue.get_nowait()
@@ -101,8 +105,9 @@ def projection_area_auto_detection(cap):
 
         cv2.imshow('img', result_image)  # ROI가 그려진 이미지만 'img'에 표시
         if cv2.waitKey(1) == ord('q'):
+            print(corners)
             break
-
+        
     return corners
 
 # 비디오 처리 루프 함수
@@ -260,7 +265,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 elif action == "grib":
                     if wait_open_setting:
                         # 시스템 환경설정 열기
-                        subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.displays"])
+                        subprocess.run(["gnome-control-center", "display"])
                         wait_open_setting = False
 
                 else:

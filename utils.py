@@ -262,15 +262,18 @@ def validate_corners(corners, y_threshold=10):
     # 모든 조건을 만족해야 True
     return top_y_similar and bottom_y_similar and width_condition
 
-def find_green_corners(img):
-    # lower_green = np.array([30, 25, 25])
-    # upper_green = np.array([85, 255, 255])
-    lower_blue = np.array([100, 150, 50])
-    upper_blue = np.array([140, 255, 255])
+def find_red_corners(img):
+    lower_red_1 = np.array([0, 100, 100])
+    upper_red_1 = np.array([10, 255, 255])
+    lower_red_2 = np.array([160, 100, 100])
+    upper_red_2 = np.array([180, 255, 255])
 
     # HSV 색 공간으로 변환 및 초록색 필터링
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    
+    mask1 = cv2.inRange(hsv, lower_red_1, upper_red_1)
+    mask2 = cv2.inRange(hsv, lower_red_2, upper_red_2)
+    mask = mask1 | mask2
 
     # 모폴로지 연산으로 노이즈 제거
     kernel = np.ones((5, 5), np.uint8)
@@ -280,147 +283,87 @@ def find_green_corners(img):
     # 엣지 검출 및 윤곽선 찾기
     edges = cv2.Canny(mask, 50, 150)
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    try:
+        # 가장 큰 윤곽선 찾기
+        largest_contour = max(contours, key=cv2.contourArea)
 
-    # 가장 큰 윤곽선 찾기
-    largest_contour = max(contours, key=cv2.contourArea)
+        # 사다리꼴 꼭짓점 근사화
+        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
 
-    # 사다리꼴 꼭짓점 근사화
-    epsilon = 0.02 * cv2.arcLength(largest_contour, True)
-    approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+        # 꼭짓점이 4개인 경우만 처리
+        if len(approx) == 4:
+            corners = [tuple(pt[0]) for pt in approx]
 
-    # 꼭짓점이 4개인 경우만 처리
-    if len(approx) == 4:
-        corners = [tuple(pt[0]) for pt in approx]
+            # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
+            corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
+            top_points = sorted(corners[:2], key=lambda x: x[0])
+            bottom_points = sorted(corners[2:], key=lambda x: x[0])
+            sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
 
-        # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
-        corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
-        top_points = sorted(corners[:2], key=lambda x: x[0])
-        bottom_points = sorted(corners[2:], key=lambda x: x[0])
-        sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+            # 꼭짓점 출력
+            for idx, point in enumerate(sorted_corners):
+                cv2.circle(img, point, 10, (0, 0, 255), -1)
+                cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-        # 꼭짓점 출력
-        for idx, point in enumerate(sorted_corners):
-            cv2.circle(img, point, 10, (0, 0, 255), -1)
-            cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
+            return sorted_corners, img
+        else:
+            # print("사각형을 찾지 못했습니다.")
+            return [], img
+    except:
+        print('Error')
+        return None, img
 
-        print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
-        return sorted_corners, img
-    else:
-        # print("사각형을 찾지 못했습니다.")
-        return [], img
+def find_green_corners(img):
+    lower_green = np.array([30, 60, 60])
+    upper_green = np.array([85, 255, 255])
+    # lower_blue = np.array([100, 150, 50])
+    # upper_blue = np.array([140, 255, 255])
 
+    # HSV 색 공간으로 변환 및 초록색 필터링
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-def detect_white_corners(image):
-    """
-    이미지에서 하얀색 영역의 꼭짓점을 탐지합니다.
-    
-    Parameters:
-    - image: str, 이미지 파일 경로
-    
-    Returns:
-    - corners: np.array, 하얀색 영역의 꼭짓점 좌표 배열 (없을 경우 None)
-    """
-    
-    # 이미지 불러오기
-    image = cv2.imread(image)
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    # 하얀색 범위 설정
-    lower_white = np.array([0, 0, 200])
-    upper_white = np.array([180, 30, 255])
-    
-    # 하얀색 영역 마스크 생성
-    mask = cv2.inRange(hsv, lower_white, upper_white)
-    
-    # 윤곽선 검출
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # 하얀색 영역의 윤곽선 중 가장 큰 영역 찾기
-    white_corners = None
-    max_area = 0
-    for contour in contours:
-        # 윤곽선의 면적 계산
-        area = cv2.contourArea(contour)
-        if area > max_area:
-            # 윤곽선을 근사화하여 꼭짓점 추출
-            epsilon = 0.02 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
-            
-            # 꼭짓점이 4개인 경우만 처리
-            if len(approx) == 4:
-                corners = [tuple(pt[0]) for pt in approx]
+    mask = cv2.inRange(hsv, lower_green, upper_green)
 
-                # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
-                corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
-                top_points = sorted(corners[:2], key=lambda x: x[0])
-                bottom_points = sorted(corners[2:], key=lambda x: x[0])
-                sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+    # 모폴로지 연산으로 노이즈 제거
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-                # 꼭짓점 출력
-                for idx, point in enumerate(sorted_corners):
-                    cv2.circle(image, point, 10, (0, 0, 255), -1)
-                    cv2.putText(image, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-                print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
-                return sorted_corners, image
-            else:
-                # print("사각형을 찾지 못했습니다.")
-                return [], image
-    
-
-def extract_projection_area(img):
-    """
-    이미지에서 사다리꼴 형태의 프로젝션 영역을 자동으로 추출하고 직사각형 형태로 변환합니다.
-    
-    Parameters:
-    - img: np.array, 이미지
-    - width: int, 변환된 직사각형 이미지의 너비
-    - height: int, 변환된 직사각형 이미지의 높이
-    
-    Returns:
-    - img: np.array, 추출된 프로젝션 영역 이미지
-    - pts_src: np.array, 원본 이미지에서 추출된 사다리꼴 꼭짓점 좌표
-    """
-    
-    # 이미지 불러오기
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # 이진화 및 엣지 검출
-    _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-    edges = cv2.Canny(binary, 50, 150)
-    
-    # 윤곽선 검출
+    # 엣지 검출 및 윤곽선 찾기
+    edges = cv2.Canny(mask, 50, 150)
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    # 사다리꼴 영역 찾기
-    projection_points = None
-    for contour in contours:
-        # 윤곽선을 근사화하여 다각형 꼭짓점 추출
-        epsilon = 0.02 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-        
-        # 꼭짓점이 4개인 경우 사다리꼴로 간주
+    try:
+        # 가장 큰 윤곽선 찾기
+        largest_contour = max(contours, key=cv2.contourArea)
+
+        # 사다리꼴 꼭짓점 근사화
+        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+
+        # 꼭짓점이 4개인 경우만 처리
         if len(approx) == 4:
-            projection_points = approx
-            break
-    
-    # 꼭짓점이 4개인 경우만 처리
-    if len(approx) == 4:
-        corners = [tuple(pt[0]) for pt in approx]
+            corners = [tuple(pt[0]) for pt in approx]
 
-        # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
-        corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
-        top_points = sorted(corners[:2], key=lambda x: x[0])
-        bottom_points = sorted(corners[2:], key=lambda x: x[0])
-        sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+            # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
+            corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
+            top_points = sorted(corners[:2], key=lambda x: x[0])
+            bottom_points = sorted(corners[2:], key=lambda x: x[0])
+            sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
 
-        # 꼭짓점 출력
-        for idx, point in enumerate(sorted_corners):
-            cv2.circle(img, point, 10, (0, 0, 255), -1)
-            cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # 꼭짓점 출력
+            for idx, point in enumerate(sorted_corners):
+                cv2.circle(img, point, 10, (0, 0, 255), -1)
+                cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-        print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
-        return sorted_corners, img
-    else:
-        print("사다리꼴 영역을 찾지 못했습니다.")
-        return None, None
+            print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
+            return sorted_corners, img
+        else:
+            # print("사각형을 찾지 못했습니다.")
+            return [], img
+    except:
+        print('Error')
+        return None, img
