@@ -262,65 +262,9 @@ def validate_corners(corners, y_threshold=10):
     # 모든 조건을 만족해야 True
     return top_y_similar and bottom_y_similar and width_condition
 
-def find_red_corners(img):
-    lower_red_1 = np.array([0, 100, 100])
-    upper_red_1 = np.array([10, 255, 255])
-    lower_red_2 = np.array([160, 100, 100])
-    upper_red_2 = np.array([180, 255, 255])
-
-    # HSV 색 공간으로 변환 및 초록색 필터링
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    
-    mask1 = cv2.inRange(hsv, lower_red_1, upper_red_1)
-    mask2 = cv2.inRange(hsv, lower_red_2, upper_red_2)
-    mask = mask1 | mask2
-
-    # 모폴로지 연산으로 노이즈 제거
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-
-    # 엣지 검출 및 윤곽선 찾기
-    edges = cv2.Canny(mask, 50, 150)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    try:
-        # 가장 큰 윤곽선 찾기
-        largest_contour = max(contours, key=cv2.contourArea)
-
-        # 사다리꼴 꼭짓점 근사화
-        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
-        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
-
-        # 꼭짓점이 4개인 경우만 처리
-        if len(approx) == 4:
-            corners = [tuple(pt[0]) for pt in approx]
-
-            # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
-            corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
-            top_points = sorted(corners[:2], key=lambda x: x[0])
-            bottom_points = sorted(corners[2:], key=lambda x: x[0])
-            sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
-
-            # 꼭짓점 출력
-            for idx, point in enumerate(sorted_corners):
-                cv2.circle(img, point, 10, (0, 0, 255), -1)
-                cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-            print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
-            return sorted_corners, img
-        else:
-            # print("사각형을 찾지 못했습니다.")
-            return [], img
-    except:
-        print('Error')
-        return None, img
-
 def find_green_corners(img):
-    lower_green = np.array([30, 60, 60])
+    lower_green = np.array([30, 65, 65])
     upper_green = np.array([85, 255, 255])
-    # lower_blue = np.array([100, 150, 50])
-    # upper_blue = np.array([140, 255, 255])
 
     # HSV 색 공간으로 변환 및 초록색 필터링
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -362,8 +306,22 @@ def find_green_corners(img):
             print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
             return sorted_corners, img
         else:
-            # print("사각형을 찾지 못했습니다.")
             return [], img
     except:
         print('Error')
         return None, img
+    
+def convert_position(pt1, pt2, pers):
+    # 변환된 동차 좌표 계산
+    transformed_pt1 = np.dot(pers, pt1)
+    transformed_pt2 = np.dot(pers, pt2)
+
+    # 변환된 유클리드 좌표 계산 (동차좌표를 유클리드 좌표로 변환)
+    transformed_pt1 = transformed_pt1 / transformed_pt1[2]
+    transformed_x1, transformed_y1 = round(transformed_pt1[0]), round(transformed_pt1[1])
+
+    # 변환된 유클리드 좌표 계산 (동차좌표를 유클리드 좌표로 변환)
+    transformed_pt2 = transformed_pt2 / transformed_pt2[2]
+    transformed_x2, transformed_y2 = round(transformed_pt2[0]), round(transformed_pt2[1]) 
+
+    return (transformed_x1, transformed_y1), (transformed_x2, transformed_y2)

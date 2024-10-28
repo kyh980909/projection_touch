@@ -229,6 +229,8 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 finger_pos = (int(result.multi_hand_landmarks[0].landmark[8].x * width),
                             int(result.multi_hand_landmarks[0].landmark[8].y * height))
 
+                finger_pos = convert_position(finger_pos[0], finger_pos[1])
+
                 # 손동작 인식 후 화면에 제스처 출력
                 if action is not None:
                     img = display_gesture(img, action, width, height, size_ratio=0.5)
