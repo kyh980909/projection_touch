@@ -3,7 +3,7 @@ import mediapipe as mp
 import numpy as np
 import time, os
 
-actions = ['click', 'stanby1', 'stanby2']
+actions = ['click', 'wait', 'power on', 'power off']
 seq_length = 30
 secs_for_action = 30
 
@@ -80,7 +80,7 @@ while cap.isOpened():
 
         data = np.array(data)
         print(action, data.shape)
-        np.save(os.path.join('dataset', f'raw_{action}_{created_time}'), data)
+        np.save(os.path.join('dataset', f'raw_{action}_2'), data)
 
         # Create sequence data
         full_seq_data = []
@@ -89,5 +89,5 @@ while cap.isOpened():
 
         full_seq_data = np.array(full_seq_data)
         print(action, full_seq_data.shape)
-        np.save(os.path.join('dataset', f'seq_{action}_{created_time}'), full_seq_data)
+        np.save(os.path.join('dataset', f'seq_{action}_2'), full_seq_data)
     break

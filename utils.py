@@ -3,12 +3,12 @@ import numpy as np
 import torch
 
 class Button:
-    def __init__(self, pos: list[int], size: list[int], text: str):
+    def __init__(self, pos, size, text):
         self.pos = pos  # [x, y] 중앙 좌표
         self.size = size  # [width, height] 크기
         self.text = text  # 버튼에 표시할 텍스트
 
-def draw(img: np.ndarray, buttons: list[Button], width: int, height: int, size_ratio: float, position_ratio: float) -> np.ndarray:
+def draw(img, buttons, width, height, size_ratio, position_ratio):
     for button in buttons:
         # 버튼 위치 및 크기를 비율로 조정
         x = round(button.pos[0] * position_ratio)
@@ -33,7 +33,7 @@ def draw(img: np.ndarray, buttons: list[Button], width: int, height: int, size_r
         cv2.putText(img, button.text, (text_x, text_y), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 2)
     return img
 
-def draw_legend(img: np.ndarray, key_map: dict[str, str], width: int, height: int, size_ratio: float) -> np.ndarray:
+def draw_legend(img, key_map, width, height, size_ratio):
     overlay = img.copy()
     output = img.copy()
 
@@ -74,7 +74,7 @@ def draw_legend(img: np.ndarray, key_map: dict[str, str], width: int, height: in
     cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
-def draw_input(img: np.ndarray, text: str, width: int, height: int, size_ratio: float) -> np.ndarray:
+def draw_input(img, text, width, height, size_ratio):
     overlay = img.copy()
     output = img.copy()
 
@@ -94,7 +94,7 @@ def draw_input(img: np.ndarray, text: str, width: int, height: int, size_ratio: 
     cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
-def display_gesture(img: np.ndarray, gesture_text: str, width: int, height: int, size_ratio: float = 1.0) -> np.ndarray:
+def display_gesture(img, gesture_text, width, height, size_ratio = 1.0):
     overlay = img.copy()
     output = img.copy()
 
@@ -124,7 +124,7 @@ def display_gesture(img: np.ndarray, gesture_text: str, width: int, height: int,
     cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
-def display_click_status(img: np.ndarray, click_status: str, width: int, height: int, size_ratio: float = 1.0) -> np.ndarray:
+def display_click_status(img, click_status, width, height, size_ratio = 1.0):
     overlay = img.copy()
     output = img.copy()
 
@@ -154,17 +154,17 @@ def display_click_status(img: np.ndarray, click_status: str, width: int, height:
     cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
-def vertical_symmetry(x: int, y: int, height: int) -> tuple[int, int]:
+def vertical_symmetry(x, y, height):
     new_y = height - y
     return x, new_y
 
-def horizontal_symmetry(x: int, y: int, width: int) -> tuple[int, int]:
+def horizontal_symmetry(x, y, width):
     new_x = width - x
     return new_x, y
 
 
 
-def drawROI(img: np.ndarray, corners: np.ndarray, size_ratio: float) -> np.ndarray:
+def drawROI(img, corners, size_ratio):
     cpy = img.copy()
 
     c1 = [(192, 192, 255), (192, 102, 255), (102, 192, 255), (192, 255, 255)]
@@ -181,7 +181,7 @@ def drawROI(img: np.ndarray, corners: np.ndarray, size_ratio: float) -> np.ndarr
 
     return cv2.addWeighted(img, 0.3, cpy, 0.7, 0)
 
-def convert_position(pt1: np.ndarray, pt2: np.ndarray, pers: np.ndarray) -> tuple[tuple[int, int], tuple[int, int]]:
+def convert_position(pt1, pt2, pers):
     transformed_pt1 = np.dot(pers, pt1)
     transformed_pt2 = np.dot(pers, pt2)
     
@@ -220,7 +220,8 @@ def recognize_action(model, input_data, actions, action_seq, device):
         y_pred = model(input_data).squeeze()
         i_pred = int(torch.argmax(y_pred))
         conf = torch.softmax(y_pred, dim=0)[i_pred].item()
-    if conf < 0.5:
+    print(conf)
+    if conf < 0.3:
         return None, action_seq
 
     action = actions[i_pred]
@@ -230,7 +231,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
         return None, action_seq
 
     # 연속으로 몇 프레임의 액션이 동일해야 해당 액션으로 인식하는지 조절 (제스처 변경 속도 조절 가능)
-    if action_seq[-1] == action_seq[-2]:# == action_seq[-3]:
+    if action_seq[-1] == action_seq[-2] == action_seq[-3]:
         return action, action_seq
 
     return None, action_seq
@@ -311,12 +312,12 @@ def find_green_corners(img):
         print('Error')
         return None, img
     
-def convert_position(pt1, pers):
+def convert_position(point, pers):
     # 변환된 동차 좌표 계산
-    transformed_pt1 = np.dot(pers, pt1)
+    transformed_point = np.dot(pers, np.array([point[0], point[1], 1]))
 
     # 변환된 유클리드 좌표 계산 (동차좌표를 유클리드 좌표로 변환)
-    transformed_pt1 = transformed_pt1 / transformed_pt1[2]
-    transformed_x1, transformed_y1 = round(transformed_pt1[0]), round(transformed_pt1[1])
+    transformed_point = transformed_point / transformed_point[2]
+    transformed_x, transformed_y = round(transformed_point[0]), round(transformed_point[1])
 
-    return (transformed_x1, transformed_y1)
+    return transformed_x, transformed_y

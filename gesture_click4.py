@@ -7,6 +7,7 @@ from utils import *
 import socket #소켓 통신
 import threading
 import queue
+from models.model import *
 
 client_socket = None
 
@@ -111,16 +112,16 @@ def projection_area_auto_detection(cap):
     return corners
 
 # 키패드 버튼을 직접 생성하는 함수
-def create_keypad_direct(width: int, height: int) -> list[Button]:
+def create_keypad_direct(width, height):
     buttons = []
 
     # 각 버튼의 위치와 크기를 직접 지정
-    buttons.append(Button(pos=[round(0.3 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="Button 1"))
-    buttons.append(Button(pos=[round(0.7 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="Button 2"))
-    buttons.append(Button(pos=[round(0.5 * width), round(0.50 * height)], size=[round(0.15 * width), round(0.1 * height)], text="Button 3"))
-    buttons.append(Button(pos=[round(0.25 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="Button 4"))
-    buttons.append(Button(pos=[round(0.5 * width), round(0.65 * height)], size=[round(0.17 * width), round(0.1 * height)], text="Button 5"))
-    buttons.append(Button(pos=[round(0.75 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="Button 6"))
+    buttons.append(Button(pos=[round(0.3 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="1"))
+    buttons.append(Button(pos=[round(0.7 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="2"))
+    buttons.append(Button(pos=[round(0.5 * width), round(0.50 * height)], size=[round(0.15 * width), round(0.1 * height)], text="3"))
+    buttons.append(Button(pos=[round(0.25 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="4"))
+    buttons.append(Button(pos=[round(0.5 * width), round(0.65 * height)], size=[round(0.17 * width), round(0.1 * height)], text="5"))
+    buttons.append(Button(pos=[round(0.75 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="6"))
 
     return buttons
 
@@ -137,7 +138,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
-    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.3, min_tracking_confidence=0.3)
+    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.6, min_tracking_confidence=0.6)
 
     # 버튼 정보 생성
     buttons = create_keypad_direct(width, height)  # 화면 크기에 맞춰 버튼 배열 생성
@@ -148,8 +149,8 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
     action_seq = []
 
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    out = cv2.VideoWriter('input.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
-    out2 = cv2.VideoWriter('output.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
+    out = cv2.VideoWriter('input4.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
+    out2 = cv2.VideoWriter('output4.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
 
     cv2.namedWindow('img', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('img', width, height)
@@ -175,7 +176,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 
         img0 = img.copy()
         img = draw(img, buttons, width, height, size_ratio=1.0, position_ratio=1.0)
-        result = hands.process(img)
+        result = hands.process(img0)
 
         try:
             user_input = input_queue.get_nowait()
@@ -194,13 +195,11 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 
         # 모서리점, 사각형 그리기 (img에만 적용)
         img_with_roi = drawROI(img, srcQuad, 1.0)
-        projector_img = img_with_roi.copy()
         cv2.setMouseCallback('img', onMouse)
 
         # 투시 변환 (dst에서는 ROI와 관련된 내용 제외)
         pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
         dst = cv2.warpPerspective(img0, pers, (width, height), flags=cv2.INTER_CUBIC)  # img0를 사용하여 srcQuad 및 ROI 무시
-
         cv2.imshow('dst', dst)
 
         if result.multi_hand_landmarks is not None:
@@ -224,58 +223,61 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 
                 # 손동작 인식
                 action, action_seq = recognize_action(model, input_data, actions, action_seq, device)
+                
                 if action is None:
                     continue
 
                 finger_pos = (int(result.multi_hand_landmarks[0].landmark[8].x * width),
                             int(result.multi_hand_landmarks[0].landmark[8].y * height))
+                
+                transformed_finger_pos = convert_position(finger_pos, pers)
 
-                finger_pos = convert_position(np.array(finger_pos[0], finger_pos[1]))
-
-                # 손동작 인식 후 화면에 제스처 출력
-                if action is not None:
-                    img = display_gesture(img, action, width, height, size_ratio=0.5)
-
-                if action == "click":
-                    for button in buttons:
-                        x, y = button.pos
-                        w, h = button.size
+                
+                for button in buttons:
+                    x, y = button.pos
+                    w, h = button.size
+                    
+                    # 어떤 버튼을 클릭했는지 판단하는 조건문
+                    if is_finger_in_rectangle(transformed_finger_pos, button):
+                        # 화면 밖으로 나가지 않도록 좌표 보정
+                        rect_x1 = max(0, x - w // 2)
+                        rect_y1 = max(0, y - h // 2)
+                        rect_x2 = min(width, x + w // 2)
+                        rect_y2 = min(height, y + h // 2)
                         
-                        # 어떤 버튼을 클릭했는지 판단하는 조건문
-                        if is_finger_in_rectangle(finger_pos, button):
-                            if wait_click:
-                                text = button.text
-                                send_text(text) #서버에 텍스트 전송
-                                # 화면 밖으로 나가지 않도록 좌표 보정
-                                rect_x1 = max(0, x - w // 2)
-                                rect_y1 = max(0, y - h // 2)
-                                rect_x2 = min(width, x + w // 2)
-                                rect_y2 = min(height, y + h // 2)
-                                
-                                # 사각형 그리기
-                                cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
-                                wait_click = False
-                elif action == "grib":
-                    if wait_open_setting:
-                        # 시스템 환경설정 열기
-                        subprocess.Popen(["gnome-control-center", "display"])
-                        wait_open_setting = False
+                        # 사각형 그리기
+                        cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
+                        # 손동작 인식 후 화면에 제스처 출력
+                        if action is not None:
+                            img = display_gesture(img, action, width, height, size_ratio=0.5)
 
-                else:
-                    wait_click = True
-                    wait_open_setting = True
+                            if action == "click":
+                                if wait_click:
+                                    text = button.text
+                                    send_text(text) #서버에 텍스트 전송
+                                    # 화면 밖으로 나가지 않도록 좌표 보정
+                                    rect_x1 = max(0, x - w // 2)
+                                    rect_y1 = max(0, y - h // 2)
+                                    rect_x2 = min(width, x + w // 2)
+                                    rect_y2 = min(height, y + h // 2)
+                                    
+                                    # 사각형 그리기
+                                    cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
+                                    wait_click = False
+                            elif action == "grib":
+                                if wait_open_setting:
+                                    # 시스템 환경설정 열기
+                                    subprocess.Popen(["gnome-control-center", "display"])
+                                    wait_open_setting = False
+                            else:
+                                wait_click = True
+                                wait_open_setting = True
 
                 # 검지 손가락 끝에 원 그리기
                 cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
 
                 # 텍스트 출력
                 cv2.putText(img, f'{action.upper()}', org=(finger_pos[0], finger_pos[1] + 20), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 255, 255), thickness=2)
-
-
-        # img_with_roi = draw(img_with_roi, buttons)
-        # img_with_roi = draw_legend(img_with_roi)
-        # img_with_roi = draw_input(img_with_roi, text)
-        # projector_img = draw_input(projector_img, text)
 
         out.write(img0)
         out2.write(img)
@@ -294,17 +296,22 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 if __name__ == "__main__":
     #서버에 연결
     connect_to_server()
-    device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
-        
-    model = torch.jit.load('models/lstm_model_scr2.pt')
+    device = torch.device('cuda')
+
+    # Hyperparameters
+    features = 99
+    num_classes = 4
+
+    model = LSTMModel(input_size=features, hidden_size=64, num_classes=num_classes).to(device)
+    model.load_state_dict(torch.load('models/gesture_model.pth'))
     model.to(device)
 
-    actions = ['click', 'wait', 'grib']
+    actions = ['click', 'wait', 'power on', 'power off']
     seq_length = 30
 
     cap = cv2.VideoCapture(0)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = 640
+    height = 480
     print(f'width: {width}, height: {height}')
     corners = projection_area_auto_detection(cap)
     process_video(cap, model, actions, seq_length, width, height, device, corners)

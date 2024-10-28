@@ -49,11 +49,14 @@ def create_buttons(width, height):
     button_texts.append('0')
     button_texts.append('#')
 
-    button_width_ratio = 0.1  
-    button_height_ratio = 0.1  
-    spacing_ratio = 0.05  
-    x_offset_ratio = 0.25
-    y_offset_ratio = 0.4
+    # Ratio settings
+    button_width_ratio = 0.1  # button width 10%
+    button_height_ratio = 0.1  # button height 10%
+    spacing_ratio = 0.1  # button space
+    x_offset_ratio = 0.3
+    y_offset_ratio = 0.05
+
+    key_map = {}
 
     for row in range(rows+1):
         for col in range(cols):
@@ -62,16 +65,11 @@ def create_buttons(width, height):
             button_size = [round(button_width_ratio * width), round(button_height_ratio * height)]
             button_text = button_texts[row * cols + col]
             buttons.append(Button(pos=[x, y], size=button_size, text=button_text))
+            key_map[row * cols + col + 1] = button_text
 
     return buttons
 
-def create_key_map(buttons):
-    key_map = {}
-    for i, button in enumerate(buttons):
-        key_map[i + 1] = button.text
-    return key_map
-
-def draw(img, buttons, width=720, height=480, size_ratio=1.0, position_ratio=1.0, flip=True):
+def draw(img, buttons, width=640, height=480, size_ratio=1.0, position_ratio=1.0, flip=True):
     global active_keys 
 
     for button in buttons:
@@ -97,7 +95,7 @@ def draw(img, buttons, width=720, height=480, size_ratio=1.0, position_ratio=1.0
         text_size = cv2.getTextSize(button.text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
         text_x = x - text_size[0] // 2
         text_y = y + text_size[1] // 2
-        text_color = (255, 255, 255) if is_active else (0, 0, 0)
+        text_color = (255, 0, 0) if is_active else (0, 0, 0)
         cv2.putText(img, button.text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
 
         print("Drawing button {0}, is_active: {1}".format(button.text, is_active))
@@ -169,11 +167,11 @@ def handle_client(conn, addr):
             if not data:
                 break
             text = data.decode().strip()
-            if text == '0': 
+            if text == 'c': 
                 with green_screen_lock:
                     green_screen_mode = not green_screen_mode
                 print("Green screen mode: {}".format("ON" if green_screen_mode else "OFF"))
-            elif text.isdigit() and 1 <= int(text) <= 10:
+            else:
                 with active_keys_lock:
                     before = set(active_keys)
                     if text in active_keys:
@@ -253,7 +251,7 @@ def write_to_framebuffer(image):
             line_length = struct.unpack('I', fix_info[32:36])[0]
 
             if xres <= 0 or yres <= 0:
-                xres, yres = 720, 480
+                xres, yres = 640, 480
 
             if image.shape[2] == 3:  # If image is BGR
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2BGR565)
@@ -299,7 +297,7 @@ def draw_border_and_markers(image):
 def initialize_framebuffer():
     try:
         with open('/dev/fb0', 'wb') as f:
-            black_frame = np.zeros((480, 720, 3), dtype=np.uint8)
+            black_frame = np.zeros((480, 640, 3), dtype=np.uint8)
             f.write(black_frame.tostring())
             f.flush()
         print("Framebuffer initialized")
@@ -327,11 +325,10 @@ def main():
         initialize_display()
         initialize_framebuffer()
         
-        width, height = 720, 480
+        width, height = 640, 480
         frame_count = 0
         duration = 3600
         buttons = create_buttons(width, height)
-        key_map = create_key_map(buttons)
         tcp_thread = threading.Thread(target=start_tcp_server)
         tcp_thread.start()
 
@@ -345,7 +342,7 @@ def main():
                         image = np.zeros((height, width, 3), dtype=np.uint8)
                         with active_keys_lock:
                             #frame = draw_grid_of_rectangles(image)
-                            frame = draw(image, buttons, width, height, flip=True)
+                            frame = draw(image, buttons, width, height, flip=False)
                         #frame = add_click_text(frame)
                         frame = draw_border_and_markers(frame)
                     else:

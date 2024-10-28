@@ -10,7 +10,7 @@ upper_red1 = np.array([10, 255, 255])
 lower_red2 = np.array([170, 120, 70])
 upper_red2 = np.array([180, 255, 255])
 
-lower_green = np.array([30, 60, 60])
+lower_green = np.array([30, 65, 65])
 upper_green = np.array([85, 255, 255])
 
 while True:
