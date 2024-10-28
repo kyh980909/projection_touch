@@ -308,6 +308,64 @@ def find_green_corners(img):
     else:
         # print("사각형을 찾지 못했습니다.")
         return [], img
+
+
+def detect_white_corners(image):
+    """
+    이미지에서 하얀색 영역의 꼭짓점을 탐지합니다.
+    
+    Parameters:
+    - image: str, 이미지 파일 경로
+    
+    Returns:
+    - corners: np.array, 하얀색 영역의 꼭짓점 좌표 배열 (없을 경우 None)
+    """
+    
+    # 이미지 불러오기
+    image = cv2.imread(image)
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    # 하얀색 범위 설정
+    lower_white = np.array([0, 0, 200])
+    upper_white = np.array([180, 30, 255])
+    
+    # 하얀색 영역 마스크 생성
+    mask = cv2.inRange(hsv, lower_white, upper_white)
+    
+    # 윤곽선 검출
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 하얀색 영역의 윤곽선 중 가장 큰 영역 찾기
+    white_corners = None
+    max_area = 0
+    for contour in contours:
+        # 윤곽선의 면적 계산
+        area = cv2.contourArea(contour)
+        if area > max_area:
+            # 윤곽선을 근사화하여 꼭짓점 추출
+            epsilon = 0.02 * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            
+            # 꼭짓점이 4개인 경우만 처리
+            if len(approx) == 4:
+                corners = [tuple(pt[0]) for pt in approx]
+
+                # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
+                corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
+                top_points = sorted(corners[:2], key=lambda x: x[0])
+                bottom_points = sorted(corners[2:], key=lambda x: x[0])
+                sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+
+                # 꼭짓점 출력
+                for idx, point in enumerate(sorted_corners):
+                    cv2.circle(image, point, 10, (0, 0, 255), -1)
+                    cv2.putText(image, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+                print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
+                return sorted_corners, image
+            else:
+                # print("사각형을 찾지 못했습니다.")
+                return [], image
     
 
 def extract_projection_area(img):

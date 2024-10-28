@@ -87,7 +87,8 @@ def projection_area_auto_detection(cap):
             print("Failed to capture frame from camera. Exiting.")
             break
 
-        corners, result_image = extract_projection_area(img)
+        # corners, result_image = extract_projection_area(img)
+        corners, result_image = detect_white_corners(img)
 
         try:
             user_input = input_queue.get_nowait()
