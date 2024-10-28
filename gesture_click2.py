@@ -2,8 +2,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import torch
+import subprocess
 from utils import *
-
 import socket #소켓 통신
 import threading
 import queue
@@ -239,7 +239,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 finger_pos = (int(result.multi_hand_landmarks[0].landmark[8].x * width),
                             int(result.multi_hand_landmarks[0].landmark[8].y * height))
 
-                finger_pos = convert_position(finger_pos[0], finger_pos[1])
+                finger_pos = convert_position(np.array(finger_pos[0], finger_pos[1]))
 
                 # 손동작 인식 후 화면에 제스처 출력
                 if action is not None:
@@ -267,7 +267,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 elif action == "grib":
                     if wait_open_setting:
                         # 시스템 환경설정 열기
-                        subprocess.run(["gnome-control-center", "display"])
+                        subprocess.Popen(["gnome-control-center", "display"])
                         wait_open_setting = False
 
                 else:

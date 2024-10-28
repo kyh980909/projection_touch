@@ -311,17 +311,12 @@ def find_green_corners(img):
         print('Error')
         return None, img
     
-def convert_position(pt1, pt2, pers):
+def convert_position(pt1, pers):
     # 변환된 동차 좌표 계산
     transformed_pt1 = np.dot(pers, pt1)
-    transformed_pt2 = np.dot(pers, pt2)
 
     # 변환된 유클리드 좌표 계산 (동차좌표를 유클리드 좌표로 변환)
     transformed_pt1 = transformed_pt1 / transformed_pt1[2]
     transformed_x1, transformed_y1 = round(transformed_pt1[0]), round(transformed_pt1[1])
 
-    # 변환된 유클리드 좌표 계산 (동차좌표를 유클리드 좌표로 변환)
-    transformed_pt2 = transformed_pt2 / transformed_pt2[2]
-    transformed_x2, transformed_y2 = round(transformed_pt2[0]), round(transformed_pt2[1]) 
-
-    return (transformed_x1, transformed_y1), (transformed_x2, transformed_y2)
+    return (transformed_x1, transformed_y1)
