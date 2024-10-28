@@ -263,12 +263,14 @@ def validate_corners(corners, y_threshold=10):
     return top_y_similar and bottom_y_similar and width_condition
 
 def find_green_corners(img):
-    lower_green = np.array([30, 25, 25])
-    upper_green = np.array([85, 255, 255])
+    # lower_green = np.array([30, 25, 25])
+    # upper_green = np.array([85, 255, 255])
+    lower_blue = np.array([100, 150, 50])
+    upper_blue = np.array([140, 255, 255])
 
     # HSV 색 공간으로 변환 및 초록색 필터링
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, lower_green, upper_green)
+    mask = cv2.inRange(hsv, lower_blue, upper_blue)
 
     # 모폴로지 연산으로 노이즈 제거
     kernel = np.ones((5, 5), np.uint8)
