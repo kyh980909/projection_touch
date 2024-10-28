@@ -310,22 +310,22 @@ def find_green_corners(img):
         return [], img
     
 
-def extract_projection_area(image):
+def extract_projection_area(img):
     """
     이미지에서 사다리꼴 형태의 프로젝션 영역을 자동으로 추출하고 직사각형 형태로 변환합니다.
     
     Parameters:
-    - image: np.array, 이미지
+    - img: np.array, 이미지
     - width: int, 변환된 직사각형 이미지의 너비
     - height: int, 변환된 직사각형 이미지의 높이
     
     Returns:
-    - warped_image: np.array, 추출된 프로젝션 영역 이미지
+    - img: np.array, 추출된 프로젝션 영역 이미지
     - pts_src: np.array, 원본 이미지에서 추출된 사다리꼴 꼭짓점 좌표
     """
     
     # 이미지 불러오기
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
     # 이진화 및 엣지 검출
     _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
@@ -346,21 +346,23 @@ def extract_projection_area(image):
             projection_points = approx
             break
     
-    # 사다리꼴 영역이 감지된 경우
-    if projection_points is not None:
-        # 추출된 꼭짓점 좌표를 배열로 변환
-        pts_src = np.float32([point[0] for point in projection_points])
-        
-        # 목적지 좌표 설정
-        pts_dst = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
-        
-        # 변환 행렬 계산
-        matrix = cv2.getPerspectiveTransform(pts_src, pts_dst)
-        
-        # 사다리꼴 영역을 직사각형으로 변환하여 추출
-        warped_image = cv2.warpPerspective(image, matrix, (width, height))
-        
-        return warped_image, pts_src
+    # 꼭짓점이 4개인 경우만 처리
+    if len(approx) == 4:
+        corners = [tuple(pt[0]) for pt in approx]
+
+        # 좌상단, 우상단, 좌하단, 우하단 순서로 정렬
+        corners = sorted(corners, key=lambda x: (x[1], x[0]))  # y값 기준으로 정렬
+        top_points = sorted(corners[:2], key=lambda x: x[0])
+        bottom_points = sorted(corners[2:], key=lambda x: x[0])
+        sorted_corners = [top_points[0], top_points[1], bottom_points[0], bottom_points[1]]
+
+        # 꼭짓점 출력
+        for idx, point in enumerate(sorted_corners):
+            cv2.circle(img, point, 10, (0, 0, 255), -1)
+            cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+        print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
+        return sorted_corners, img
     else:
         print("사다리꼴 영역을 찾지 못했습니다.")
         return None, None
