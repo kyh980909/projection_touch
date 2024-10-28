@@ -164,6 +164,15 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
         img = draw(img, buttons, width, height, size_ratio=1.0, position_ratio=1.0)
         result = hands.process(img)
 
+        try:
+            user_input = input_queue.get_nowait()
+            if user_input.lower() == 'q':
+                break
+            send_text(user_input) #사용자 입력 서버에 전송
+            print(f"User input: {user_input}") #사용자 입력 확인
+        except queue.Empty:
+            pass
+
         if not wait_click:
             img = display_click_status(img, 'Wait for click', width, height, size_ratio=0.5)
 
@@ -269,7 +278,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 
 if __name__ == "__main__":
     #서버에 연결
-    # connect_to_server()
+    connect_to_server()
     device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
         
     model = torch.jit.load('models/lstm_model_scr2.pt')
