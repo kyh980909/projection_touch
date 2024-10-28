@@ -308,3 +308,59 @@ def find_green_corners(img):
     else:
         # print("사각형을 찾지 못했습니다.")
         return [], img
+    
+
+def extract_projection_area(image):
+    """
+    이미지에서 사다리꼴 형태의 프로젝션 영역을 자동으로 추출하고 직사각형 형태로 변환합니다.
+    
+    Parameters:
+    - image: np.array, 이미지
+    - width: int, 변환된 직사각형 이미지의 너비
+    - height: int, 변환된 직사각형 이미지의 높이
+    
+    Returns:
+    - warped_image: np.array, 추출된 프로젝션 영역 이미지
+    - pts_src: np.array, 원본 이미지에서 추출된 사다리꼴 꼭짓점 좌표
+    """
+    
+    # 이미지 불러오기
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # 이진화 및 엣지 검출
+    _, binary = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+    edges = cv2.Canny(binary, 50, 150)
+    
+    # 윤곽선 검출
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 사다리꼴 영역 찾기
+    projection_points = None
+    for contour in contours:
+        # 윤곽선을 근사화하여 다각형 꼭짓점 추출
+        epsilon = 0.02 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        
+        # 꼭짓점이 4개인 경우 사다리꼴로 간주
+        if len(approx) == 4:
+            projection_points = approx
+            break
+    
+    # 사다리꼴 영역이 감지된 경우
+    if projection_points is not None:
+        # 추출된 꼭짓점 좌표를 배열로 변환
+        pts_src = np.float32([point[0] for point in projection_points])
+        
+        # 목적지 좌표 설정
+        pts_dst = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
+        
+        # 변환 행렬 계산
+        matrix = cv2.getPerspectiveTransform(pts_src, pts_dst)
+        
+        # 사다리꼴 영역을 직사각형으로 변환하여 추출
+        warped_image = cv2.warpPerspective(image, matrix, (width, height))
+        
+        return warped_image, pts_src
+    else:
+        print("사다리꼴 영역을 찾지 못했습니다.")
+        return None, None
