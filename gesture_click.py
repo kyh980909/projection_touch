@@ -74,7 +74,7 @@ def onMouse(event, x, y, flags, param):
                 break
 
 def projection_area_auto_detection(cap):
-    while cap.isOpend():
+    while cap.isOpened():
         ret, img = cap.read()
         if not ret:
             print("Failed to capture frame from camera. Exiting.")
@@ -89,14 +89,14 @@ def projection_area_auto_detection(cap):
     return corners
 
 # 비디오 처리 루프 함수
-def process_video(cap, model, actions, seq_length, width, height, device):
+def process_video(cap, model, actions, seq_length, width, height, device, corners):
 
     global srcQuad, dragSrc, ptOld, img
 
     dragSrc= [False, False, False, False]
 
     # 모서리 점들의 좌표, 드래그 상태 여부
-    srcQuad = np.array([[30, 30], [30, height-30], [width-30, height-30], [width-30, 30]], np.float32)
+    srcQuad = np.array([corners[0], corners[2], corners[3], corners[1]], np.float32)
     dstQuad = np.array([[0, 0], [0, height-1], [width-1, height-1], [width-1, 0]], np.float32)
     
     mp_hands = mp.solutions.hands
@@ -282,4 +282,5 @@ if __name__ == "__main__":
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f'width: {width}, height: {height}')
-    process_video(cap, model, actions, seq_length, width, height, device)
+    corners = projection_area_auto_detection(cap)
+    process_video(cap, model, actions, seq_length, width, height, device, corners)
