@@ -74,6 +74,13 @@ def onMouse(event, x, y, flags, param):
                 break
 
 def projection_area_auto_detection(cap):
+    #사용자 입력을 받는 스레드 생성
+    input_queue = queue.Queue()
+
+    input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
+    input_thread.daemon = True
+    input_thread.start()
+
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -81,6 +88,15 @@ def projection_area_auto_detection(cap):
             break
 
         corners, result_image = find_green_corners(img)
+
+        try:
+            user_input = input_queue.get_nowait()
+            if user_input.lower() == 'q':
+                break
+            send_text(user_input) #사용자 입력 서버에 전송
+            print(f"User input: {user_input}") #사용자 입력 확인
+        except queue.Empty:
+            pass
 
         cv2.imshow('img', result_image)  # ROI가 그려진 이미지만 'img'에 표시
         if cv2.waitKey(1) == ord('q'):
@@ -131,13 +147,6 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
              # 각 버튼의 인덱스와 값을 key_map에 추가
             key_map[row * cols + col + 1] = button_text  # 인덱스를 1부터 시작
 
-    #사용자 입력을 받는 스레드 생성
-    input_queue = queue.Queue()
-
-    input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
-    input_thread.daemon = True
-    input_thread.start()
-
     seq = []
     action_seq = []
 
@@ -151,6 +160,13 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
 
     cv2.namedWindow('dst', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('dst', width, height)
+
+    #사용자 입력을 받는 스레드 생성
+    input_queue = queue.Queue()
+
+    input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
+    input_thread.daemon = True
+    input_thread.start()
 
     wait_click = True
     wait_open_setting = True
