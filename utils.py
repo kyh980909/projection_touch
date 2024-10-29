@@ -112,7 +112,6 @@ def display_gesture(img, gesture_text, width, height, size_ratio = 1.0, padding 
     return output
 
 def display_click_status(img, click_status, width, height, size_ratio = 1.0):
-    overlay = img.copy()
     output = img.copy()
 
     # 텍스트의 크기 계산
@@ -125,20 +124,9 @@ def display_click_status(img, click_status, width, height, size_ratio = 1.0):
     text_x = padding
     text_y = round(height*0.92) #height - padding
 
-    # 텍스트를 위한 배경 사각형
-    rect_x1 = text_x - padding // 2
-    rect_y1 = text_y - text_height - padding // 2
-    rect_x2 = text_x + text_width + padding // 2
-    rect_y2 = text_y + padding // 2
-
-    # 반투명한 검은색 배경 그리기
-    cv2.rectangle(overlay, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 0), -1)
-
     # 인식된 제스처 텍스트 출력
-    cv2.putText(overlay, click_status, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2 * size_ratio, (0, 255, 0), 2)
+    cv2.putText(output, click_status, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2 * size_ratio, (0, 255, 0), 2)
 
-    # 화면에 출력 (배경과 텍스트 추가)
-    cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
 def vertical_symmetry(x, y, height):
