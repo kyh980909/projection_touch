@@ -94,8 +94,7 @@ def draw_input(img, text, width, height, size_ratio):
     cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
-def display_gesture(img, gesture_text, width, height, size_ratio = 1.0):
-    overlay = img.copy()
+def display_gesture(img, gesture_text, width, height, size_ratio = 1.0, padding = 20):
     output = img.copy()
 
     # 텍스트의 크기 계산
@@ -104,24 +103,12 @@ def display_gesture(img, gesture_text, width, height, size_ratio = 1.0):
     text_height = text_size[1]
 
     # 왼쪽 하단 위치 계산 (화면에서 일정 간격 떨어짐)
-    padding = 20
     text_x = padding
     text_y = height - padding
 
-    # 텍스트를 위한 배경 사각형
-    rect_x1 = text_x - padding // 2
-    rect_y1 = text_y - text_height - padding // 2
-    rect_x2 = text_x + text_width + padding // 2
-    rect_y2 = text_y + padding // 2
-
-    # 반투명한 검은색 배경 그리기
-    cv2.rectangle(overlay, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 0), -1)
-
     # 인식된 제스처 텍스트 출력
-    cv2.putText(overlay, gesture_text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2 * size_ratio, (0, 255, 0), 2)
+    cv2.putText(output, gesture_text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2 * size_ratio, (0, 255, 0), 2)
 
-    # 화면에 출력 (배경과 텍스트 추가)
-    cv2.addWeighted(overlay, 0.7, output, 0.3, 0, output)
     return output
 
 def display_click_status(img, click_status, width, height, size_ratio = 1.0):
@@ -220,7 +207,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
         y_pred = model(input_data).squeeze()
         i_pred = int(torch.argmax(y_pred))
         conf = torch.softmax(y_pred, dim=0)[i_pred].item()
-    print(conf)
+
     if conf < 0.3:
         return None, action_seq
 
@@ -303,13 +290,10 @@ def find_green_corners(img):
             for idx, point in enumerate(sorted_corners):
                 cv2.circle(img, point, 10, (0, 0, 255), -1)
                 cv2.putText(img, f'{idx}', point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-            print("꼭짓점 좌표 (좌상단, 우상단, 좌하단, 우하단):", sorted_corners)
             return sorted_corners, img
         else:
             return [], img
     except:
-        print('Error')
         return None, img
     
 def convert_position(point, pers):
