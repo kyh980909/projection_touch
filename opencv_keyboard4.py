@@ -52,7 +52,7 @@ def create_buttons(width, height):
 
     return buttons
 
-def draw(img, buttons, width=640, height=480, size_ratio=1.0, position_ratio=1.0, flip=True):
+def draw(img, buttons, width=720, height=480, size_ratio=1.0, position_ratio=1.0, flip=True):
     global active_keys 
 
     for button in buttons:
@@ -234,7 +234,7 @@ def write_to_framebuffer(image):
             line_length = struct.unpack('I', fix_info[32:36])[0]
 
             if xres <= 0 or yres <= 0:
-                xres, yres = 640, 480
+                xres, yres = 720, 480
 
             if image.shape[2] == 3:  # If image is BGR
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2BGR565)
@@ -280,7 +280,7 @@ def draw_border_and_markers(image):
 def initialize_framebuffer():
     try:
         with open('/dev/fb0', 'wb') as f:
-            black_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            black_frame = np.zeros((480, 720, 3), dtype=np.uint8)
             f.write(black_frame.tostring())
             f.flush()
         print("Framebuffer initialized")
@@ -308,7 +308,7 @@ def main():
         initialize_display()
         initialize_framebuffer()
         
-        width, height = 640, 480
+        width, height = 720, 480
         frame_count = 0
         duration = 3600
         buttons = create_buttons(width, height)
