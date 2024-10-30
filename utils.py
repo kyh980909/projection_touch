@@ -195,7 +195,7 @@ def recognize_action(model, input_data, actions, action_seq, device):
         y_pred = model(input_data).squeeze()
         i_pred = int(torch.argmax(y_pred))
         conf = torch.softmax(y_pred, dim=0)[i_pred].item()
-
+        
     if conf < 0.3:
         return None, action_seq
 
