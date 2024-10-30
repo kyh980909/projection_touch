@@ -87,9 +87,6 @@ def projection_area_auto_detection(cap):
         if not ret:
             print("Failed to capture frame from camera. Exiting.")
             break
-
-        # corners, result_image = extract_projection_area(img)
-        # corners, result_image = detect_white_corners(img)
         
         result_corners, result_image = find_green_corners(img)
         if result_corners:
@@ -137,7 +134,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
     button_width_ratio = 0.1  # 버튼 너비를 화면의 10%로 설정
     button_height_ratio = 0.1  # 버튼 높이를 화면의 10%로 설정
     spacing_ratio = 0.1  # 버튼 간의 간격을 화면 비율에 맞춤
-    x_offset_ratio = 0.1
+    x_offset_ratio = 0.05
     y_offset_ratio = 0.05
 
     key_map = {}
@@ -197,7 +194,9 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
             pass
 
         if not wait_click:
-            img = display_click_status(img, 'Wait for click', width, height, size_ratio=0.5)
+            img = display_click_status(img, 'Wait for click', width, height, size_ratio=0.25)
+        else:
+            img = display_click_status(img, '', width, height, size_ratio=0.25)
 
         # 각 버튼들의 인덱스와 값을 화면에 출력 (draw_legend 함수 활용)
         img = draw_legend(img, key_map, width, height, size_ratio=1.0)
