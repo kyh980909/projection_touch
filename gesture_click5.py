@@ -273,7 +273,6 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                                     cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
                                     wait_click = False
                             elif action == "power on":
-                            elif action == ""
                             else:
                                 wait_click = True
                                 wait_open_setting = True
