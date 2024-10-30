@@ -108,6 +108,45 @@ def projection_area_auto_detection(cap):
         
     return corners
 
+def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting):
+    transformed_finger_pos = convert_position(finger_pos, pers)
+
+    if action is not None:
+        for button in buttons:
+            x, y = button.pos
+            w, h = button.size
+
+            if action == "click":
+                if is_finger_in_rectangle(transformed_finger_pos, button):
+                    rect_x1 = max(0, x - w // 2)
+                    rect_y1 = max(0, y - h // 2)
+                    rect_x2 = min(width, x + w // 2)
+                    rect_y2 = min(height, y + h // 2)
+                    cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
+                    
+                    if wait_click:
+                        text = button.text
+                        send_text(text)
+                        cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
+                        wait_click = False
+                        wait_open_setting = True
+
+            elif action == "setting":
+                if wait_open_setting:
+                    subprocess.Popen(["gnome-control-center", "display"])
+                    wait_open_setting = False
+                    wait_click = True
+
+            else:
+                wait_click = True
+                wait_open_setting = True
+    else:
+        wait_click = True
+        wait_open_setting = True
+
+    cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
+    return wait_click, wait_open_setting
+
 # 비디오 처리 루프 함수
 def process_video(cap, model, actions, seq_length, width, height, device, corners):
 
@@ -241,51 +280,9 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 transformed_finger_pos = convert_position(finger_pos, pers)
 
                 
-                for button in buttons:
-                    x, y = button.pos
-                    w, h = button.size
-                    
-                    # 어떤 버튼을 클릭했는지 판단하는 조건문
-                    if is_finger_in_rectangle(transformed_finger_pos, button):
-                        # 화면 밖으로 나가지 않도록 좌표 보정
-                        rect_x1 = max(0, x - w // 2)
-                        rect_y1 = max(0, y - h // 2)
-                        rect_x2 = min(width, x + w // 2)
-                        rect_y2 = min(height, y + h // 2)
-                        
-                        # 사각형 그리기
-                        cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
-                        # 손동작 인식 후 화면에 제스처 출력
-                        if action is not None:
-                            img = display_gesture(img, action, width, height, size_ratio=0.5)
-
-                            if action == "click":
-                                if wait_click:
-                                    text = button.text
-                                    send_text(text) #서버에 텍스트 전송
-                                    # 화면 밖으로 나가지 않도록 좌표 보정
-                                    rect_x1 = max(0, x - w // 2)
-                                    rect_y1 = max(0, y - h // 2)
-                                    rect_x2 = min(width, x + w // 2)
-                                    rect_y2 = min(height, y + h // 2)
-                                    
-                                    # 사각형 그리기
-                                    cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
-                                    wait_click = False
-                            elif action == "grib":
-                                if wait_open_setting:
-                                    # 시스템 환경설정 열기
-                                    subprocess.Popen(["gnome-control-center", "display"])
-                                    wait_open_setting = False
-                            else:
-                                wait_click = True
-                                wait_open_setting = True
-
-                # 검지 손가락 끝에 원 그리기
-                cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
-
-                # 텍스트 출력
-                cv2.putText(img, f'{action.upper()}', org=(finger_pos[0], finger_pos[1] + 20), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 255, 255), thickness=2)
+                wait_click, wait_open_setting = handle_gesture_actions(
+                    img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting
+                )
 
         out.write(img0)
         out2.write(img)

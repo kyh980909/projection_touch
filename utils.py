@@ -137,8 +137,6 @@ def horizontal_symmetry(x, y, width):
     new_x = width - x
     return new_x, y
 
-
-
 def drawROI(img, corners, size_ratio):
     cpy = img.copy()
 
@@ -293,59 +291,3 @@ def convert_position(point, pers):
     transformed_x, transformed_y = round(transformed_point[0]), round(transformed_point[1])
 
     return transformed_x, transformed_y
-
-def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting):
-    """
-    동작 인식에 따른 버튼 클릭과 설정 창 열기 등의 작업을 수행하는 함수.
-
-    Parameters:
-        img (np.ndarray): 영상 프레임.
-        action (str): 인식된 동작.
-        buttons (list[Button]): 버튼 목록.
-        width (int): 프레임 너비.
-        height (int): 프레임 높이.
-        finger_pos (tuple[int, int]): 변환된 손가락 좌표.
-        pers (np.ndarray): 투시 변환 행렬.
-        wait_click (bool): 클릭 대기 여부.
-        wait_open_setting (bool): 설정 창 열기 대기 여부.
-
-    Returns:
-        tuple: 업데이트된 wait_click과 wait_open_setting.
-    """
-    transformed_finger_pos = convert_position(finger_pos, pers)
-
-    if action is not None:
-        for button in buttons:
-            x, y = button.pos
-            w, h = button.size
-
-            if action == "click":
-                if is_finger_in_rectangle(transformed_finger_pos, button):
-                    rect_x1 = max(0, x - w // 2)
-                    rect_y1 = max(0, y - h // 2)
-                    rect_x2 = min(width, x + w // 2)
-                    rect_y2 = min(height, y + h // 2)
-                    cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
-                    
-                    if wait_click:
-                        text = button.text
-                        send_text(text)
-                        cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
-                        wait_click = False
-                        wait_open_setting = True
-
-            elif action == "setting":
-                if wait_open_setting:
-                    subprocess.Popen(["gnome-control-center", "display"])
-                    wait_open_setting = False
-                    wait_click = True
-
-            else:
-                wait_click = True
-                wait_open_setting = True
-    else:
-        wait_click = True
-        wait_open_setting = True
-
-    cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
-    return wait_click, wait_open_setting
