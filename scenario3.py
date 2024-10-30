@@ -10,6 +10,7 @@ import queue
 from models.model import *
 
 client_socket = None
+click_count = 0
 
 #사용자 입력을 받는 함수
 def get_user_input(input_queue):
@@ -109,6 +110,7 @@ def projection_area_auto_detection(cap):
     return corners
 
 def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting):
+    global click_count
     transformed_finger_pos = convert_position(finger_pos, pers)
 
     if action is not None:
@@ -123,20 +125,13 @@ def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers
                     rect_x2 = min(width, x + w // 2)
                     rect_y2 = min(height, y + h // 2)
                     cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
-                    
                     if wait_click:
                         text = button.text
                         send_text(text)
                         cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
                         wait_click = False
                         wait_open_setting = True
-
-            elif action == "setting":
-                if wait_open_setting:
-                    subprocess.Popen(["gnome-control-center", "display"])
-                    wait_open_setting = False
-                    wait_click = True
-
+                        click_count += 1
             else:
                 wait_click = True
                 wait_open_setting = True
@@ -163,7 +158,7 @@ def create_keypad_direct(width, height):
 def process_video(cap, model, actions, seq_length, width, height, device, corners):
     
     global srcQuad, dragSrc, ptOld, img
-
+    global click_count
     dragSrc = [False, False, False, False]
 
     # 모서리 점들의 좌표, 드래그 상태 여부
@@ -201,6 +196,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
     input_thread.start()
 
     wait_click = True
+    wait_open_setting = True
 
     while cap.isOpened():
         ret, img = cap.read()
@@ -234,6 +230,8 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
         pers = cv2.getPerspectiveTransform(srcQuad, dstQuad)
         dst = cv2.warpPerspective(img0, pers, (width, height), flags=cv2.INTER_CUBIC)  # img0를 사용하여 srcQuad 및 ROI 무시
         cv2.imshow('dst', dst)
+
+        cv2.putText(img, f'Click count: {click_count}', (0,460), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         if result.multi_hand_landmarks is not None:
             for res in result.multi_hand_landmarks:

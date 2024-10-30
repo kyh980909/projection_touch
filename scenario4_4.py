@@ -76,12 +76,6 @@ def onMouse(event, x, y, flags, param):
 
 def projection_area_auto_detection(cap):
     #사용자 입력을 받는 스레드 생성
-    # input_queue = queue.Queue()
-
-    # input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
-    # input_thread.daemon = True
-    # input_thread.start()
-    # corners = []
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -96,7 +90,7 @@ def projection_area_auto_detection(cap):
         
     return corners
 
-def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting):
+def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers, wait_click):
     transformed_finger_pos = convert_position(finger_pos, pers)
 
     if action is not None:
@@ -105,45 +99,30 @@ def handle_gesture_actions(img, action, buttons, width, height, finger_pos, pers
             w, h = button.size
 
             if action == "click":
-                if is_finger_in_rectangle(transformed_finger_pos, button):
-                    rect_x1 = max(0, x - w // 2)
-                    rect_y1 = max(0, y - h // 2)
-                    rect_x2 = min(width, x + w // 2)
-                    rect_y2 = min(height, y + h // 2)
-                    cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (255, 0, 0), thickness=2)
-                    
+                if is_finger_in_rectangle(transformed_finger_pos, button):                    
                     if wait_click:
                         text = button.text
                         send_text(text)
-                        cv2.rectangle(img, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 0, 255), thickness=2)
                         wait_click = False
-                        wait_open_setting = True
-
-            elif action == "setting":
-                if wait_open_setting:
-                    subprocess.Popen(["gnome-control-center", "display"])
-                    wait_open_setting = False
-                    wait_click = True
-
             else:
                 wait_click = True
-                wait_open_setting = True
     else:
         wait_click = True
-        wait_open_setting = True
 
     cv2.circle(img, finger_pos, 5, (255, 0, 0), -1)
-    return wait_click, wait_open_setting
-
+    return wait_click
 
 # 키패드 버튼을 직접 생성하는 함수
 def create_keypad_direct(width, height):
     buttons = []
 
     # 각 버튼의 위치와 크기를 직접 지정
-    buttons.append(Button(pos=[round(0.45 * width), round(0.1 * height)], size=[round(0.3 * width), round(0.2 * height)], text="UP"))
-    buttons.append(Button(pos=[round(0.45 * width), round(0.4 * height)], size=[round(0.3 * width), round(0.2 * height)], text="OK"))
-    buttons.append(Button(pos=[round(0.45 * width), round(0.75 * height)], size=[round(0.3 * width), round(0.2 * height)], text="DOWN"))
+    buttons.append(Button(pos=[round(0.3 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="1"))
+    buttons.append(Button(pos=[round(0.7 * width), round(0.4 * height)], size=[round(0.15 * width), round(0.1 * height)], text="2"))
+    buttons.append(Button(pos=[round(0.5 * width), round(0.50 * height)], size=[round(0.15 * width), round(0.1 * height)], text="3"))
+    buttons.append(Button(pos=[round(0.25 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="4"))
+    buttons.append(Button(pos=[round(0.5 * width), round(0.65 * height)], size=[round(0.17 * width), round(0.1 * height)], text="5"))
+    buttons.append(Button(pos=[round(0.75 * width), round(0.75 * height)], size=[round(0.15 * width), round(0.1 * height)], text="6"))
 
     return buttons
 
@@ -165,14 +144,14 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
     # 버튼 정보 생성
     buttons = create_keypad_direct(width, height)  # 화면 크기에 맞춰 버튼 배열 생성
 
-    key_map = {"1":"UP", "2":"OK", "3":"DOWN"}
+    key_map = {"1":"1", "2":"2", "3":"3", "4":"LEFT", "5":"OK", "6":"RIGHT"}
 
     seq = []
     action_seq = []
 
     fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    out = cv2.VideoWriter('input5.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
-    out2 = cv2.VideoWriter('output5.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
+    out = cv2.VideoWriter('scenario input4_4.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
+    out2 = cv2.VideoWriter('scenario output4_4.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (width, height))
 
     cv2.namedWindow('img', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('img', width, height)
@@ -210,9 +189,9 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
             pass
 
         if not wait_click:
-            img = display_click_status(img, 'Wait for click', width, height, size_ratio=0.25)
+            img = display_click_status(img, 'Wait for click', width, height, size_ratio=0.5)
         else:
-            img = display_click_status(img, '', width, height, size_ratio=0.25)
+            img = display_click_status(img, '', width, height, size_ratio=0.5)
 
         # 모서리점, 사각형 그리기 (img에만 적용)
         img = drawROI(img, srcQuad, 0.25)
@@ -244,18 +223,15 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 
                 # 손동작 인식
                 action, action_seq = recognize_action(model, input_data, actions, action_seq, device)
-                img = display_gesture(img, action, width, height, size_ratio=0.5, padding=10)
+                
                 if action is None:
                     continue
 
                 finger_pos = (int(result.multi_hand_landmarks[0].landmark[8].x * width),
                             int(result.multi_hand_landmarks[0].landmark[8].y * height))
                 
-                transformed_finger_pos = convert_position(finger_pos, pers)
-                
-                wait_click, wait_open_setting = handle_gesture_actions(
-                    img, action, buttons, width, height, finger_pos, pers, wait_click, wait_open_setting
-                )
+                wait_click = handle_gesture_actions(
+                    img, action, buttons, width, height, finger_pos, pers, wait_click)
 
         out.write(img0)
         out2.write(img)
@@ -284,7 +260,7 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load('models/gesture_model.pth'))
     model.to(device)
 
-    actions = ['click', 'wait', 'setting', 'power off']
+    actions = ['click', 'wait', 'power on', 'power off']
     seq_length = 30
 
     cap = cv2.VideoCapture(0)

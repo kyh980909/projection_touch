@@ -51,8 +51,8 @@ def create_buttons(width, height):
     button_width_ratio = 0.1  # button width 10%
     button_height_ratio = 0.1  # button height 10%
     spacing_ratio = 0.1  # button space
-    x_offset_ratio = 0.02
-    y_offset_ratio = 0.05
+    x_offset_ratio = 0
+    y_offset_ratio = 0.1
 
     key_map = {}
 
@@ -80,20 +80,15 @@ def draw(img, buttons, width=720, height=480, size_ratio=1.0, position_ratio=1.0
         y = int(y * position_ratio)
         
         is_active = button.text in active_keys
-        color = (0, 0, 255) if is_active else (200, 200, 200)
+        color = (255, 0, 0) if is_active else (0, 255, 0)
 
-        cv2.rectangle(img, (x - w//2, y - h//2), (x + w//2, y + h//2), (200, 200, 200), -1)
-        cv2.rectangle(img, (x - w//2, y - h//2), (x + w//2, y + h//2), (0, 0, 0), 2)
+        cv2.rectangle(img, (x - w//2, y - h//2), (x + w//2, y + h//2), (0, 0, 0), -3)
+        cv2.rectangle(img, (x - w//2, y - h//2), (x + w//2, y + h//2), color, -1)
         
-        if is_active:
-            cv2.circle(img, (x - w//2, y - h//2), 5, color, -1)
-            cv2.circle(img, (x + w//2, y - h//2), 5, color, -1)
-            cv2.circle(img, (x - w//2, y + h//2), 5, color, -1)
-            cv2.circle(img, (x + w//2, y + h//2), 5, color, -1)
         text_size = cv2.getTextSize(button.text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
         text_x = x - text_size[0] // 2
         text_y = y + text_size[1] // 2
-        text_color = (255, 0, 0) if is_active else (0, 0, 0)
+        text_color = (0, 255, 0) if is_active else (255, 0, 0)
         cv2.putText(img, button.text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, text_color, 2)
 
         print("Drawing button {0}, is_active: {1}".format(button.text, is_active))
@@ -168,7 +163,7 @@ def handle_client(conn, addr):
             if text == 'c': 
                 with green_screen_lock:
                     green_screen_mode = not green_screen_mode
-                print("Green screen mode: {}".format("ON" if green_screen_mode else "OFF"))
+                print("Green screen mode: {}".format("OFF" if green_screen_mode else "ON"))
             else:
                 with active_keys_lock:
                     before = set(active_keys)
@@ -339,9 +334,7 @@ def main():
                     if green_screen_mode:
                         image = np.zeros((height, width, 3), dtype=np.uint8)
                         with active_keys_lock:
-                            #frame = draw_grid_of_rectangles(image)
                             frame = draw(image, buttons, width, height, flip=False)
-                        #frame = add_click_text(frame)
                         frame = draw_border_and_markers(frame)
                     else:
                         frame = np.full((height, width, 3), (0, 255, 0), dtype=np.uint8)

@@ -210,17 +210,6 @@ def recognize_action(model, input_data, actions, action_seq, device):
     return None, action_seq
 
 def validate_corners(corners, y_threshold=10):
-    """
-    주어진 네 좌표의 y축 및 x축 값 조건을 검사하는 함수.
-    
-    Parameters:
-    corners (list): 좌상단, 우상단, 좌하단, 우하단 순서로 정렬된 (x, y) 좌표 리스트.
-    y_threshold (int): y축 값 비교를 위한 허용 오차.
-    x_threshold (int): x축 값 비교를 위한 최소 거리.
-    
-    Returns:
-    bool: 조건을 만족하면 True, 그렇지 않으면 False.
-    """
     # 좌표를 분리
     top_left, top_right, bottom_left, bottom_right = corners
     
