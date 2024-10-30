@@ -218,9 +218,6 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
                 
                 # 손동작 인식
                 action, action_seq = recognize_action(model, input_data, actions, action_seq, device)
-                
-                if action is None:
-                    continue
 
                 finger_pos = (int(result.multi_hand_landmarks[0].landmark[8].x * width),
                             int(result.multi_hand_landmarks[0].landmark[8].y * height))

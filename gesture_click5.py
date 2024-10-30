@@ -76,12 +76,12 @@ def onMouse(event, x, y, flags, param):
 
 def projection_area_auto_detection(cap):
     #사용자 입력을 받는 스레드 생성
-    input_queue = queue.Queue()
+    # input_queue = queue.Queue()
 
-    input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
-    input_thread.daemon = True
-    input_thread.start()
-    corners = []
+    # input_thread = threading.Thread(target=get_user_input, args=(input_queue,))
+    # input_thread.daemon = True
+    # input_thread.start()
+    # corners = []
     while cap.isOpened():
         ret, img = cap.read()
         if not ret:
@@ -91,19 +91,7 @@ def projection_area_auto_detection(cap):
         result_corners, result_image = find_green_corners(img)
         if result_corners:
             corners = result_corners
-
-        try:
-            user_input = input_queue.get_nowait()
-            if user_input.lower() == 'q':
-                break
-            send_text(user_input) #사용자 입력 서버에 전송
-            print(f"User input: {user_input}") #사용자 입력 확인
-        except queue.Empty:
-            pass
-
-        cv2.imshow('img', result_image)  # ROI가 그려진 이미지만 'img'에 표시
-        if cv2.waitKey(1) == ord('q'):
-            print(corners)
+            send_text('c') #사용자 입력 서버에 전송
             break
         
     return corners
@@ -227,7 +215,7 @@ def process_video(cap, model, actions, seq_length, width, height, device, corner
             img = display_click_status(img, '', width, height, size_ratio=0.25)
 
         # 모서리점, 사각형 그리기 (img에만 적용)
-        img_with_roi = drawROI(img, srcQuad, 1.0)
+        img = drawROI(img, srcQuad, 0.25)
         cv2.setMouseCallback('img', onMouse)
 
         # 투시 변환 (dst에서는 ROI와 관련된 내용 제외)

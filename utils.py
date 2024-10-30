@@ -194,17 +194,17 @@ def recognize_action(model, input_data, actions, action_seq, device):
         i_pred = int(torch.argmax(y_pred))
         conf = torch.softmax(y_pred, dim=0)[i_pred].item()
         
-    if conf < 0.3:
+    if conf < 0.4:
         return None, action_seq
 
     action = actions[i_pred]
     action_seq.append(action)
 
-    if len(action_seq) < 3:
+    if len(action_seq) < 7:
         return None, action_seq
 
     # 연속으로 몇 프레임의 액션이 동일해야 해당 액션으로 인식하는지 조절 (제스처 변경 속도 조절 가능)
-    if action_seq[-1] == action_seq[-2] == action_seq[-3]:
+    if action_seq[-1] == action_seq[-2] == action_seq[-3] == action_seq[-4] == action_seq[-5] == action_seq[-6] == action_seq[-7]:
         return action, action_seq
 
     return None, action_seq
